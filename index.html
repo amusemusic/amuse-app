@@ -17,6 +17,22 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<!-- 빨리 열기: 앱(구글) · 글꼴 서버와 미리 연결해 둠 (앱 화면을 받는 동안 연결 준비가 겹침) -->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script>
+  // 지난번에 앱 화면을 보내 준 구글 틀 주소(…-script.googleusercontent.com)에도 미리 연결 — 처음 여는 날은 없음
+  (function () {
+    try {
+      var o = localStorage.getItem('amuseWrap.sbx');
+      if (!o || !/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(o)) return;
+      var l = document.createElement('link');
+      l.rel = 'preconnect';
+      l.href = o;
+      document.head.appendChild(l);
+    } catch (e) {}
+  })();
+</script>
 <style>
   /* 화면 가장자리 색 (위 절반 · 아래 절반) — 앱이 {amuse:'chrome'} 으로 지금 화면에 맞는 색을 알려 줌
      (아이폰 홈 화면 앱에서 앱 틀이 화면 맨 아래 · 맨 위에 못 닿을 때 남는 띠가 이 색 → 인트로는 검정 · 메인은 아래 흰 탭바와 같은 흰색)
@@ -156,7 +172,9 @@
  *
  * 여는 순서 (v2)
  *   - 처음부터 검정 화면. 그날 처음 열면 인트로 영상(intro.mp4 — 이 폴더)을 바로 틀고, 그동안 뒤에서 구글 앱을 불러옴 (기다리는 시간이 영상과 겹침)
- *   - 영상이 끝나도 앱이 아직이면 마지막 장면(로고)에서 멈춰 기다림 · 앱이 먼저 준비되면 영상이 끝날 때까지 기다림
+ *   - 로고가 다 그려지면(1.75초 — 그 뒤 영상 끝 3.6초까지는 같은 장면) 거기서 멈춤: 앱이 아직이면 그 로고 그대로 기다림 ·
+ *     앱이 먼저 준비되면 로고가 다 그려질 때까지 기다림 (영상은 늘 끝까지 그려진 로고까지 나옴 — 누르면 건너뛰기 아님)
+ *   - 영상은 서비스 워커가 통째로 저장해 둔 것을 씀(blob) — 없으면 인터넷에서
  *   - 둘 다 끝나면: 새 앱은 로고를 넘겨받아 로그인 · 상단 로고 자리로 옮김(앱 인트로와 같은 움직임) · 예전 앱은 그냥 걷음
  *   - 영상을 못 틀면(저전력 모드 · 느린 인터넷) 검정 화면 그대로. 누르면 건너뛰기는 없음
  *   - 인트로는 감싸기가 맡는다고 앱이 알려 준 적이 있을 때만(amuseWrap.appIntro) — 처음 한 번 · 예전 앱은 앱이 하던 대로 앱이 틂
@@ -192,10 +210,12 @@
   var INTRO_SRC = 'intro.mp4';
   var INTRO_W = 2160, INTRO_H = 3840;
   var INTRO_LOGO = { x: 0.315, y: 0.4625, w: 0.378, h: 0.123 };
+  var INTRO_LOGO_DONE = 1.75;                   // (초) 영상 속 로고가 다 그려진 때 (1.67초부터 끝 3.63초까지 같은 장면 — 측정 2026-10-29)
   var INTRO_LOAD_MS = 8000;                     // 이 안에 재생이 시작되지 않으면 검정 화면으로
   var INTRO_MAX_MS = 9000;                      // 재생이 멈춰 끝나지 않을 때 안전장치
   var KEY_APP_INTRO = 'amuseWrap.appIntro';     // 앱이 "인트로는 감싸기가" 를 알아들음 (앞에 amuse: 가 아니라 앱에 넘기는 보관 값과 섞이지 않음)
   var KEY_INTRO_DATE = 'amuseWrap.introDate';   // 오늘 인트로를 이미 봤음 (하루 한 번 — 앱과 같은 규칙)
+  var KEY_SANDBOX = 'amuseWrap.sbx';            // 앱 화면을 보내 준 구글 틀 origin (다음에 열 때 미리 연결 — 위 <head>)
   var HEX = /^#[0-9a-fA-F]{6}$/;
   // ?debug=1 은 이 기기에 기억 (홈 화면 앱은 주소 뒤 ?debug=1 을 버림) · ?debug=0 으로 끔
   var DEBUG = false;
@@ -301,6 +321,7 @@
     setTimeout(function () {
       stopIntro();
       try { video.removeAttribute('src'); video.load(); } catch (e) {}
+      if (intro.blobUrl) { try { URL.revokeObjectURL(intro.blobUrl); } catch (e) {} intro.blobUrl = ''; }
     }, 600);
   }
   function showFail() {
@@ -318,8 +339,8 @@
   }
 
   // ---------- 인트로 영상 ----------
-  // state: off(틀지 않음) · loading · playing · done(끝 — 마지막 장면 그대로) · failed(못 틂 — 검정)
-  var intro = { state: 'off', told: false, loadTimer: 0, maxTimer: 0 };
+  // state: off(틀지 않음) · loading · playing · done(로고 다 그려짐 — 그 장면 그대로) · failed(못 틂 — 검정)
+  var intro = { state: 'off', told: false, loadTimer: 0, maxTimer: 0, blobUrl: '' };
   function stopIntro() {
     clearTimeout(intro.loadTimer); clearTimeout(intro.maxTimer);
     try { video.pause(); } catch (e) {}
@@ -333,9 +354,35 @@
   }
   function introEnded() {
     if (intro.state !== 'playing') return;
-    intro.state = 'done';                       // 마지막 장면(로고)에서 멈춘 채 앱을 기다림
+    intro.state = 'done';                       // 다 그려진 로고 장면에서 멈춘 채 앱을 기다림
     stopIntro();
     tryFinish();
+  }
+  /** 로고가 다 그려졌으면 거기서 멈춤 (그 뒤는 같은 장면 — 영상 끝을 기다리지 않음) */
+  function logoDone() {
+    if (intro.state === 'playing' && video.currentTime >= INTRO_LOGO_DONE) introEnded();
+  }
+  /** 화면이 바뀔 때마다 확인 (되는 브라우저만 — 나머지는 timeupdate, 늦어도 0.25초) */
+  function watchFrames() {
+    if (intro.state !== 'playing' || typeof video.requestVideoFrameCallback !== 'function') return;
+    video.requestVideoFrameCallback(function () { logoDone(); watchFrames(); });
+  }
+  /** 영상 주소: 서비스 워커가 저장해 둔 통째 파일(blob) — 없거나 0.4초 안에 못 꺼내면 인터넷 주소 */
+  function introSource(done) {
+    var sent = false;
+    var give = function (src) { if (!sent) { sent = true; done(src); } };
+    if (!window.caches || !window.URL || !URL.createObjectURL) { give(INTRO_SRC); return; }
+    setTimeout(function () { give(INTRO_SRC); }, 400);
+    try {
+      caches.match(INTRO_SRC)
+        .then(function (res) { return res && res.ok ? res.blob() : null; })
+        .then(function (blob) {
+          if (!blob || !blob.size || sent) { give(INTRO_SRC); return; }
+          intro.blobUrl = URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'video/mp4' }));
+          give(intro.blobUrl);
+        })
+        .catch(function () { give(INTRO_SRC); });
+    } catch (e) { give(INTRO_SRC); }
   }
   function startIntro() {
     intro.state = 'loading';
@@ -345,17 +392,22 @@
       clearTimeout(intro.loadTimer);
       video.classList.add('on');
       intro.maxTimer = setTimeout(introEnded, INTRO_MAX_MS);
+      watchFrames();
     });
+    video.addEventListener('timeupdate', logoDone);
     video.addEventListener('ended', introEnded);
     video.addEventListener('error', introFailed);
     intro.loadTimer = setTimeout(introFailed, INTRO_LOAD_MS);
     video.preload = 'auto';
-    video.src = INTRO_SRC;
-    try {
-      var p = video.play();
-      // 자동재생이 막힌 기기(저전력 모드 등)는 검정 화면
-      if (p && p.catch) p.catch(introFailed);
-    } catch (e) { introFailed(); }
+    introSource(function (src) {
+      if (intro.state !== 'loading') return;   // 그사이 앱이 먼저 준비돼 영상을 생략함
+      video.src = src;
+      try {
+        var p = video.play();
+        // 자동재생이 막힌 기기(저전력 모드 등)는 검정 화면
+        if (p && p.catch) p.catch(introFailed);
+      } catch (e) { introFailed(); }
+    });
   }
   // 인트로는 앱이 감싸기에 맡긴다고 한 적이 있을 때만 · 하루 한 번
   var ownIntro = lsGet(KEY_APP_INTRO) === '1';
@@ -478,6 +530,7 @@
 
     if (d.amuse === 'hello') {
       appWin = e.source; appOrigin = e.origin;
+      if (lsGet(KEY_SANDBOX) !== e.origin) lsSet(KEY_SANDBOX, e.origin);   // 다음에 열 때 미리 연결 (<head>)
       var caps = Array.isArray(d.caps) ? d.caps : [];
       app.hello = true;
       app.v = Number(d.v) || 1;
