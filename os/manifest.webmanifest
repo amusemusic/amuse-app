@@ -4,9 +4,9 @@
   "description": "AMUSE OS",
   "lang": "ko",
   "dir": "ltr",
-  "start_url": "./",
+  "start_url": "./?launch=1",
   "scope": "./",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#111111",
   "icons": [

@@ -4,12 +4,17 @@
 <meta charset="utf-8">
 <!--
   AMUSE OS — 홈 화면 · 바탕화면 아이콘용 입구
-  - 아이콘(강사앱과 같은 검정 로고)만 주고, 누르면 OS(시트 없이 여는 ?app=os)를 바로 엶
+  - 아이콘(강사앱과 같은 검정 로고)을 주고, 아이콘으로 열었을 때만 OS(?app=os)로 바로 넘어감
+    · 브라우저 주소로 열면 넘어가지 않음 → 그 화면에서 "홈 화면에 추가" 를 할 수 있게 (바로 넘어가면 아이콘이 구글 주소로 생김)
+    · 아이콘으로 연 것: 홈 화면 앱(standalone) 이거나 주소 끝 ?launch=1 (manifest start_url)
   - OS 는 보안상 다른 페이지 틀 안에 넣을 수 없음 → 감싸지 않고 그 주소로 넘어감
   - 강사앱 서비스 워커(../sw.js)는 이 폴더를 건드리지 않음 (os/ 는 저장 목록에 없음)
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="AMUSE OS">
 <title>AMUSE OS</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,26 +24,30 @@
   html, body { margin: 0; height: 100%; background: #111111; color: #ffffff; }
   body {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
-    font-family: Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    padding: 24px; box-sizing: border-box;
+    font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   }
   img { width: 120px; height: 120px; border-radius: 26px; }
+  .name { margin: 0; font-size: 17px; font-weight: 700; }
   a {
-    display: none; padding: 13px 28px; border-radius: 3px;
-    background: #e95a1a; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; max-width: 340px; height: 50px; border-radius: 3px;
+    background: #e95a1a; color: #ffffff; font-size: 15.5px; font-weight: 700; text-decoration: none;
   }
-  a.show { display: inline-block; }
 </style>
 </head>
 <body>
-  <img src="../icons/icon-192.png" alt="AMUSE OS">
-  <a id="open" href="https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec?app=os">AMUSE OS 열기</a>
+  <img src="../icons/icon-192.png" alt="">
+  <p class="name">AMUSE OS</p>
+  <a id="open" href="https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec?app=os">열기</a>
   <script>
     (function () {
-      var link = document.getElementById('open');
-      try { location.replace(link.href); } catch (e) {}
-      // 넘어가지 못한 경우(막힘 · 뒤로 가기로 돌아옴)에만 버튼을 보임
-      setTimeout(function () { link.className = 'show'; }, 1500);
-      window.addEventListener('pageshow', function (ev) { if (ev.persisted) link.className = 'show'; });
+      var standalone = window.navigator.standalone === true ||
+        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      var launched = /(?:^|[?&])launch=1(?:&|$)/.test(location.search);
+      if (standalone || launched) {
+        try { location.replace(document.getElementById('open').href); } catch (e) {}
+      }
     })();
   </script>
 </body>
