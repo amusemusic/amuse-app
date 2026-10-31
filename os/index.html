@@ -4,14 +4,15 @@
 <meta charset="utf-8">
 <!--
   AMUSE OS — 홈 화면 · 바탕화면 아이콘용 입구
-  - 아이콘(강사앱과 같은 검정 로고)을 주고, 아이콘으로 열었을 때만 OS(?app=os)로 바로 넘어감
-    · 브라우저 주소로 열면 넘어가지 않음 → 그 화면에서 "홈 화면에 추가" 를 할 수 있게 (바로 넘어가면 아이콘이 구글 주소로 생김)
+  - 아이콘(강사앱과 같은 검정 로고)으로 열면 바로 OS(?app=os)로 넘어감 → OS 가 앞 영상 · 로고 · 로그인을 보여 줌
     · 아이콘으로 연 것: 홈 화면 앱(standalone) 이거나 주소 끝 ?launch=1 (manifest start_url)
+  - 브라우저 주소로 열면 넘어가지 않고 앞 영상만 (로고 장면에서 멈춤) → 그 화면에서 "홈 화면에 추가"
+    (바로 넘어가면 아이콘이 구글 주소로 생김) · 글자 · 버튼 없음 · 누르면 건너뛰기 없음
   - OS 는 보안상 다른 페이지 틀 안에 넣을 수 없음 → 감싸지 않고 그 주소로 넘어감
   - 강사앱 서비스 워커(../sw.js)는 이 폴더를 건드리지 않음 (os/ 는 저장 목록에 없음)
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -21,33 +22,42 @@
 <link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png">
 <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <style>
-  html, body { margin: 0; height: 100%; background: #111111; color: #ffffff; }
-  body {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
-    padding: 24px; box-sizing: border-box;
-    font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  }
-  img { width: 120px; height: 120px; border-radius: 26px; }
-  .name { margin: 0; font-size: 17px; font-weight: 700; }
-  a {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; max-width: 340px; height: 50px; border-radius: 3px;
-    background: #e95a1a; color: #ffffff; font-size: 15.5px; font-weight: 700; text-decoration: none;
+  html, body { margin: 0; height: 100%; background: #000000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  /* 강사앱 인트로와 같은 색 보정 · 크기 (휴대폰은 화면 가득, 큰 화면은 가운데 좁게) */
+  video { width: 100%; height: 100%; object-fit: cover; filter: url(#tint); }
+  @media (min-width: 768px) and (hover: hover) {
+    video { width: min(40vw, 420px); }
   }
 </style>
 </head>
 <body>
-  <img src="../icons/icon-192.png" alt="">
-  <p class="name">AMUSE OS</p>
-  <a id="open" href="https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec?app=os">열기</a>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="tint" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="1.1427 -0.0459 -0.0969 0 0 0.1713 0.9449 -0.1162 0 0 0.0343 -0.0110 0.9768 0 0 0 0 0 1 0"/></filter></svg>
   <script>
     (function () {
+      var OS = 'https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec?app=os';
       var standalone = window.navigator.standalone === true ||
         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
       var launched = /(?:^|[?&])launch=1(?:&|$)/.test(location.search);
       if (standalone || launched) {
-        try { location.replace(document.getElementById('open').href); } catch (e) {}
+        try { location.replace(OS); } catch (e) {}
+        return;
       }
+      // 브라우저로 연 경우: 앞 영상만 — 로고가 다 그려지면 그 장면에서 멈춤
+      var video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.preload = 'auto';
+      video.src = '../intro.mp4';
+      video.addEventListener('timeupdate', function () {
+        if (video.currentTime >= 1.75) { try { video.pause(); } catch (e) {} }
+      });
+      document.body.appendChild(video);
+      var p = video.play && video.play();
+      if (p && p.catch) p.catch(function () {});
     })();
   </script>
 </body>
