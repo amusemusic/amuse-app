@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>AMUSE 회원페이지</title>
 <meta name="description" content="AMUSE 회원페이지">
-<meta name="theme-color" content="#111111">
+<meta name="theme-color" content="#0e0d0c">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <!-- black-translucent: 상태 표시줄 아래까지 이 페이지가 직접 칠함 → iOS가 그리는 띠·경계선이 없음 -->
@@ -35,7 +35,7 @@
 </script>
 <style>
   /* 화면 가장자리 색 (위 절반 · 아래 절반) — 앱이 {amuse:'chrome'} 으로 지금 화면에 맞는 색을 알려 줌
-     (아이폰 홈 화면 앱에서 앱 틀이 화면 맨 아래 · 맨 위에 못 닿을 때 남는 띠가 이 색 → 인트로는 검정 · 메인은 아래 흰 탭바와 같은 흰색)
+     (아이폰 홈 화면 앱에서 앱 틀이 화면 맨 아래 · 맨 위에 못 닿을 때 남는 띠가 이 색 → 인트로는 검정 · 메인은 아래 탭바와 같은 검정 #100f0e)
      기본(로딩 · 인트로)은 검정 #000 */
   :root { --fill-top: #000000; --fill-bot: #000000; }
   html, body {
@@ -128,7 +128,7 @@
   }
   #fail button { border: 0; background: #e95a1a; color: #fff; }
   #fail a { border: 1px solid #3a3a3a; background: #1a1a1a; color: #fff; }
-  /* ?debug=1 일 때만: 화면 크기 · 안전 영역 값 (원장님이 캡처해서 보내 주실 수 있게) */
+  /* ?debug=1 일 때만: 화면 크기 · 안전 영역 값 (운영자가 캡처해서 보내 줄 수 있게) */
   #debug {
     position: fixed;
     top: calc(env(safe-area-inset-top, 0px) + 4px);
@@ -253,10 +253,10 @@
     root.style.setProperty('--fill-top', top);
     root.style.setProperty('--fill-bot', bottom);
   }
-  // 걷은 뒤: 앱이 알려 준 색 (예전 앱은 알려 주지 않음 → 예전 바탕 #111)
+  // 걷은 뒤: 앱이 알려 준 색 (예전 앱은 알려 주지 않음 → 회원페이지 검정 바탕 #0e0d0c)
   function appFill() {
     if (fillApp) setFill(fillApp.top, fillApp.bottom);
-    else setFill('#111111', '#111111');
+    else setFill('#0e0d0c', '#0e0d0c');
   }
 
   // ---------- 화면 높이 (아이폰 홈 화면 앱) ----------
