@@ -145,17 +145,10 @@
     word-break: break-all;
     pointer-events: none;
   }
-  /* 휴대폰을 가로로 돌리면: 세로로 돌려 달라는 안내 (아이폰은 앱이 화면 방향을 막을 수 없어서) — 태블릿 · PC 는 해당 없음 */
-  #rotate { display: none; }
-  @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
-    #rotate { display: flex; position: fixed; inset: 0; z-index: 20; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #fff; color: #111; font: 600 16px/1.5 Pretendard, -apple-system, 'Apple SD Gothic Neo', sans-serif; text-align: center; padding: 24px; }
-    #rotate svg { width: 44px; height: 44px; opacity: .85; }
-  }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
-<div id="rotate" aria-live="polite"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>휴대폰을 세로로 돌려 주세요</div>
 <iframe id="app" title="AMUSE 강사" allow="clipboard-write; autoplay"></iframe>
 
 <div id="cover" role="status" aria-live="polite">
