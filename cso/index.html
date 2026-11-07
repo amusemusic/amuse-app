@@ -108,9 +108,10 @@
     pointer-events: none;
   }
   #introVideo.on { opacity: 1; }
-  /* 노트북 · 큰 화면(마우스): 가운데 좁은 세로 상자(최대 420px) — 앱 인트로와 같은 규칙 */
-  @media (min-width: 768px) and (hover: hover) {
-    #introVideo { width: min(40vw, 420px); }
+  /* 태블릿 · 노트북 · 큰 화면: 가운데 휴대폰 크기 상자(475 × 최대 844) — 상담 태블릿 감싸기(consult/)와 앱 인트로(OS_Web_Gate html.osw-cso)와 같은 규칙
+     → 로고 폭 약 180px · 로고 가운데가 화면 가운데보다 20px 아래 (1280 · 1440 · 1920 모두 같은 크기) */
+  @media (min-width: 768px) {
+    #introVideo { width: 475px; height: min(100%, 844px); }
   }
   #fail { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); }
   #fail p { margin: 0 0 18px; }
