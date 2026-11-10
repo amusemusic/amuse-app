@@ -110,9 +110,8 @@
   #introVideo.on { opacity: 1; }
   /* 태블릿 · 큰 화면(가로 · 세로 · 손가락 · 마우스 모두): 가운데 휴대폰 크기 상자(475 × 최대 844 = 휴대폰 390×844 에 그려지는 영상 크기)
      → 로고 폭 약 180px = 휴대폰 강사앱 · 회원앱과 같음 · 바깥은 영상 바탕과 같은 검정 #000 · 앱 인트로(Consult_CSS .c-intro video)와 같은 규칙 */
-  @media (min-width: 768px) {
-    #introVideo { width: 475px; height: min(100%, 844px); }
-  }
+  /* 폭과 상관없이 (작은 태블릿이 768px 보다 좁게 알려도 화면 가득 커지지 않게) · 휴대폰은 예전과 같음 */
+  #introVideo { width: min(100%, 475px); height: min(100%, 844px); }
   #fail { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); }
   #fail p { margin: 0 0 18px; }
   #fail .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
