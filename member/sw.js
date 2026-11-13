@@ -27,7 +27,8 @@ self.addEventListener('install', function (event) {
         return cache.addAll(SHELL.map(function (u) { return new Request(u, { cache: 'reload' }); }))
           .then(function () {
             // 인트로 영상 (통째로 · 실패해도 설치는 계속)
-            return fetch(new Request(INTRO, { cache: 'reload' }))
+            // (속도 3 W2) 보통 캐시 모드: 방금 틀며 받은 영상이 브라우저 캐시에 있으면 그것을 씀 (742KB 를 한 번 더 받지 않음 · 파일은 같음)
+            return fetch(new Request(INTRO))
               .then(function (res) {
                 if (res && res.ok && res.status === 200 && res.type === 'basic') return cache.put(INTRO, res);
               })

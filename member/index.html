@@ -24,7 +24,12 @@
   // 지난번에 앱 화면을 보내 준 구글 틀 주소(…-script.googleusercontent.com)에도 미리 연결 — 처음 여는 날은 없음
   (function () {
     try {
-      var o = localStorage.getItem('amuseMemberWrap.sbx');
+      // (속도 3 W3) 처음 여는 날(저장 값 없음)은 아래 기본값 — 이 앱의 구글 틀 주소 (공개 · 배포마다 같음)
+      //  운영자가 채움: 이 기기 저장 값 amuseMemberWrap.sbx 또는 HAR 의 "…-script.googleusercontent.com" 주소 그대로 · 비어 있으면 예전과 같음
+      var DEFAULT_SBX = '';
+      var o = null;
+      try { o = localStorage.getItem('amuseMemberWrap.sbx'); } catch (e) { o = null; }
+      if (!o) o = DEFAULT_SBX;
       if (!o || !/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(o)) return;
       var l = document.createElement('link');
       l.rel = 'preconnect';
@@ -433,6 +438,7 @@
     appReady = true;
     clearTimeout(readyTimer);
     tryFinish();
+    setTimeout(registerSw, 3000);   // (속도 3 W2) 처음 설치: 앱이 다 뜬 뒤에 (서비스 워커 설치가 껍데기 · 인트로 영상을 받음)
   }
   /** 앱이 준비됐고 영상도 끝났으면 걷음 (새 앱이면 로고를 넘겨줌) */
   function tryFinish() {
@@ -626,10 +632,21 @@
   frame.src = FRAME_URL;
 
   // ---------- 서비스 워커 (Android 의 '앱 설치' + 오프라인일 때 로딩 화면) ----------
-  if ('serviceWorker' in navigator &&
-      (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-    navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () {});
+  // (속도 3 W2) 강사앱 감싸기와 같게: 이미 설치돼 있으면 바로 (새 sw.js 확인) · 처음이면 앱이 준비된 뒤 (markReady + 3초) — 늦어도 20초 뒤
+  // 처음 설치 때 sw.js 가 껍데기 · intro.mp4 를 받는 것이 앱 화면 · 로그인 · 첫 데이터 · 사진과 겹치지 않게
+  var swAsked = false;
+  function registerSw() {
+    if (swAsked) return;
+    swAsked = true;
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(function () {});
+    }
   }
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) registerSw();
+    else setTimeout(registerSw, 20000);
+  } catch (e) { registerSw(); }
 })();
 </script>
 </body>
