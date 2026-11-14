@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-member theme-dark">
-<head><!-- 자동으로 만든 파일: 원본은 Member.html 과 그 include — 고치지 말고 ta_build_min.js 로 다시 만듦 --><!-- 회원앱 시험판: mb_beta_build.js 로 만든 파일 (원본 Member_Min.html md5 ff4d01c398b4ff8950b1c7284422a4ec) — 손으로 고치지 말 것 -->
+<head><!-- 자동으로 만든 파일: 원본은 Member.html 과 그 include — 고치지 말고 ta_build_min.js 로 다시 만듦 --><!-- 회원앱 시험판: mb_beta_build.js 로 만든 파일 (원본 Member_Min.html md5 68acf40f3e023ebe38170f31433e6d61) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com https://script.googleusercontent.com; img-src &#39;self&#39; data: blob: https://i.ytimg.com; media-src &#39;self&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;">
@@ -663,8 +663,6 @@ try { var v = JSON.parse(raw || "null"); var t = v && String(v.token || ""); ret
 var token = tokenOf(ls("amuseMbBeta:session"));
 if (!token && gate.wrapped && gate.store && typeof gate.store.session === "string") token = tokenOf(gate.store.session);
 if (!token) return;
-var tab = /^(\w+)\|(\d+)$/.exec(String(ls("amuseMbBeta:tab") || ""));
-if (tab && tab[1] !== "home" && Date.now() - Number(tab[2]) < 30 * 60000) return;
 if (!(window.google && google.script && google.script.run)) return;
 var feedAt = 0, f = null;
 try { f = JSON.parse(ls("amuseMbBeta:feed") || "null"); feedAt = f && f.feed ? Number(f.at) || 0 : 0; } catch (e) { f = null; feedAt = 0; }
@@ -5077,7 +5075,7 @@ setSession(s);
 restoreFeed();
 restoreHome();
 try { primeEarly(); } catch (e) {}
-state.tab = storedTab() || "home";
+state.tab = "home";
 showApp();
 }
 init();
