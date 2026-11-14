@@ -1,76 +1,68 @@
 /*
- * AMUSE 강사 — 서비스 워커 (아주 작게)
- * - 이 폴더의 껍데기 파일(index.html · manifest · 아이콘)만 다룸
- * - 구글 Apps Script(iframe) 등 다른 주소의 요청은 절대 건드리지 않음
- * - v4 (빨리 열기): 저장본을 바로 보여 주고, 뒤에서 새 파일을 받아 저장본을 바꿔 둠 (stale-while-revalidate)
- *     → 아이콘을 누르면 인터넷을 기다리지 않고 바로 검정 화면 · 인트로 · 앱 불러오기가 시작됨
- *     → 감싸기 파일을 새로 올리면 "그다음 번" 실행부터 보임 (올리는_방법.md)
- *     저장본이 없으면(처음 · 지워짐) 예전처럼 인터넷에서
- * - intro.mp4(인트로 영상): 요청은 여전히 건드리지 않음 (아이폰 사파리는 영상을 조각(Range)으로 달라고 하는데
- *   저장본을 통째로 돌려주면 재생이 안 됨). 대신 설치할 때 통째로 저장해 두고, index.html 이 저장본을 꺼내
- *   blob 으로 틂 (조각 요청이 생기지 않음). 저장이 안 돼도 설치는 그대로 (영상은 인터넷에서)
- * - 이름(CACHE)을 바꾸면 휴대폰이 새 파일을 받음: v2 감싸기 v2 · v3 늘리기 끔 · v4 빨리 열기
+ * AMUSE 강사 (amuse-app/ 맨 위) — 서비스 워커 (정식판 화면 · 이 폴더 범위만)
+ * - 화면 파일(index.html) 하나 + 아이콘 하나 + 인트로 영상(intro.mp4 · 통째로)만 저장 — 회원 · 강사 자료(구글 Apps Script 답)는 절대 저장하지 않음
+ * - 화면 열기: 저장본을 바로 보여 주고 뒤에서 새 파일을 받아 저장본을 바꿔 둠 → 새 화면은 "다음 번" 열 때부터 (쓰는 도중에 바뀌지 않음)
+ * - 저장본 이름 amuse-shell-app-<판> — 이 앱의 예전 저장본(amuse-shell-*)만 지움 · 다른 앱(OS · 상담 · 시험판 · 다른 쪽 앱) 저장본은 건드리지 않음
+ * - 이 폴더 화면 주소(./ · ./index.html)만 맡음 — 다른 폴더(os/ · cso/ · consult/ · member/ · member-beta/ · teacher-beta/) · legacy.html · intro.mp4 요청 · POST · 다른 주소는 그냥 통과
+ * - intro.mp4 요청 자체는 건드리지 않음 (아이폰 사파리 조각 요청) — 화면이 저장본을 직접 꺼내 씀
  */
-var CACHE = 'amuse-shell-v4';
-var SHELL = [
-  './',
-  'index.html',
-  'manifest.webmanifest',
-  'icons/icon-192.png',
-  'icons/icon-512.png',
-  'icons/icon-512-maskable.png',
-  'icons/apple-touch-icon.png',
-  'icons/favicon-32.png'
-];
+var VERSION = '583ed1aed758';
+var CACHE = 'amuse-shell-app-' + VERSION;
+var CLEAN = 'amuse-shell-';
+var ICON = 'icons/icon-192.png';
 var INTRO = 'intro.mp4';
+
+function scopePath() { return new URL(self.registration.scope).pathname; }
+function pathOf(rel) { return new URL(rel, self.registration.scope).pathname; }
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(CACHE)
-      .then(function (cache) {
-        return cache.addAll(SHELL.map(function (u) { return new Request(u, { cache: 'reload' }); }))
-          .then(function () {
-            // 인트로 영상 (통째로 · 실패해도 설치는 계속)
-            // (속도 3 W2) 보통 캐시 모드: 방금 틀며 받은 영상이 브라우저 캐시에 있으면 그것을 씀 (742KB 를 한 번 더 받지 않음 · 파일은 같음)
-            return fetch(new Request(INTRO))
-              .then(function (res) {
-                if (res && res.ok && res.status === 200 && res.type === 'basic') return cache.put(INTRO, res);
-              })
-              .catch(function () {});
-          });
-      })
-      .then(function () { return self.skipWaiting(); })
+    caches.open(CACHE).then(function (cache) {
+      // 화면은 한 번만 받아 ./ · ./index.html 두 이름으로 · 'no-cache' = 바뀌지 않았으면 304 (낡은 판을 넣지 않음)
+      return fetch(new Request('./', { cache: 'no-cache' })).then(function (res) {
+        if (!res || !res.ok || res.type !== 'basic' || res.redirected) throw new Error('shell fetch failed');
+        return Promise.all([cache.put('./', res.clone()), cache.put('./index.html', res)]);
+      }).then(function () {
+        // 아이콘 (없어도 설치는 계속)
+        return fetch(new Request(ICON, { cache: 'no-cache' })).then(function (res) {
+          if (res && res.ok && res.type === 'basic' && !res.redirected) return cache.put(ICON, res);
+        }).catch(function () {});
+      }).then(function () {
+        // 인트로 영상 (통째로 · 실패해도 설치는 계속 · 보통 캐시 모드: 방금 받은 영상이 있으면 그것)
+        return fetch(new Request(INTRO)).then(function (res) {
+          if (res && res.ok && res.status === 200 && res.type === 'basic') return cache.put(INTRO, res);
+        }).catch(function () {});
+      });
+    }).then(function () { return self.skipWaiting(); })
   );
 });
 
 self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys()
-      .then(function (keys) {
-        return Promise.all(keys.map(function (k) {
-          if (k.indexOf('amuse-shell-') === 0 && k !== CACHE) return caches.delete(k);
-        }));
-      })
-      .then(function () { return self.clients.claim(); })
+    caches.keys().then(function (keys) {
+      return Promise.all(keys.map(function (k) {
+        if (k.indexOf(CLEAN) === 0 && k !== CACHE) return caches.delete(k);
+      }));
+    }).then(function () { return self.clients.claim(); })
   );
 });
 
-// 이 서비스 워커 범위 안의 상대 경로 ('', 'index.html', 'icons/…')
-function shellPath(url) {
-  var scope = new URL(self.registration.scope);
-  if (url.origin !== scope.origin || url.pathname.indexOf(scope.pathname) !== 0) return null;
-  var rel = url.pathname.slice(scope.pathname.length);
-  if (rel === '' || rel === 'index.html') return './';
-  return SHELL.indexOf(rel) >= 0 ? rel : null;
+/** 이 워커가 맡는 요청 → 저장본 키 | null (그 밖은 그냥 통과) */
+function keyOf(req, url) {
+  var sp = scopePath();
+  if (url.pathname === sp || url.pathname === sp + 'index.html') return './';
+  if (req.mode !== 'navigate' && url.pathname === pathOf(ICON)) return ICON;
+  return null;
 }
 
-/** 인터넷에서 받아 저장본을 바꿔 둠 (정상 응답만)
- *  no-cache: 브라우저 보통 캐시(GitHub Pages 10분)에 있어도 서버에 바뀌었는지 물어봄 (안 바뀌었으면 304 로 짧게) */
-function refresh(req, key) {
-  return fetch(new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' })).then(function (res) {
+function refresh(url, key) {
+  return fetch(new Request(url, { cache: 'no-cache', credentials: 'same-origin' })).then(function (res) {
     if (res && res.ok && res.type === 'basic' && !res.redirected) {
       var copy = res.clone();
-      caches.open(CACHE).then(function (cache) { return cache.put(key, copy); });
+      caches.open(CACHE).then(function (cache) {
+        cache.put(key, copy.clone());
+        if (key === './') cache.put('./index.html', copy);
+      });
     }
     return res;
   });
@@ -80,21 +72,17 @@ self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
   var url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;          // Apps Script · 구글 · 글꼴 등은 그냥 통과
-  var key = req.mode === 'navigate' ? (shellPath(url) ? './' : null) : shellPath(url);
+  if (url.origin !== self.location.origin) return;
+  var key = keyOf(req, url);
   if (!key) return;
-
-  var net = refresh(req, key);
-  event.waitUntil(net.then(function () {}, function () {}));   // 저장본을 보여 준 뒤에도 새 파일 받기는 끝까지
-
+  var net = refresh(key === './' ? scopePath() : url.href.split('#')[0], key);
+  event.waitUntil(net.then(function () {}, function () {}));
   event.respondWith(
     caches.open(CACHE).then(function (cache) {
-      return cache.match(key)
-        .then(function (hit) { return hit || cache.match(req, { ignoreSearch: true }); })
-        .then(function (hit) {
-          if (hit) return hit;                                   // 저장본 바로
-          return net.catch(function () { return Response.error(); });   // 처음: 인터넷 (안 되면 오류)
-        });
+      return cache.match(key).then(function (hit) {
+        if (hit) return hit;
+        return net.catch(function () { return Response.error(); });
+      });
     })
   );
 });
