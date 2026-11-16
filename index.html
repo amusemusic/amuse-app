@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-teacher">
-<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 c139340378697ef7a123de7032381d5a) — 손으로 고치지 말 것 -->
+<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 3a7ac3dca5eb70bb70bdc181b9e439d4) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; data: blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -10688,7 +10688,15 @@ TAIntro.start();
 var gate = window.AmuseWrap;
 if (!gate || typeof gate.chrome !== "function" || typeof gate.whenOpen !== "function") return;
 gate.whenOpen(function () {
-if (!gate.wrapped) return;
+var lastPaint = "";
+function paint(top, bottom) {
+if (gate.wrapped) { gate.chrome(top, bottom); return; }
+var s = top + " " + bottom;
+if (s === lastPaint) return;
+lastPaint = s;
+document.documentElement.style.background =
+"linear-gradient(" + top + "," + top + ") 0 0 / 100% 50% no-repeat, " + bottom;
+}
 function shown(id) { var e = document.getElementById(id); return !!e && !e.hidden; }
 function colors() {
 var intro = document.getElementById("intro");
@@ -10713,7 +10721,7 @@ timer = 0;
 var intro = document.getElementById("intro");
 if (mo && intro && intro !== watched) { watched = intro; mo.observe(intro, { attributes: true, attributeFilter: ["class"] }); }
 var c = colors();
-gate.chrome(c[0], c[1]);
+paint(c[0], c[1]);
 }
 function later() { if (!timer) timer = setTimeout(sync, 0); }
 if (typeof MutationObserver === "function") {
