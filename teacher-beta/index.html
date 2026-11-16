@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-teacher">
-<head><!-- 강사앱 시험판: tb_beta_build.js 로 만든 파일 (원본 TeacherApp_Min.html md5 3a7ac3dca5eb70bb70bdc181b9e439d4) — 손으로 고치지 말 것 -->
+<head><!-- 강사앱 시험판: tb_beta_build.js 로 만든 파일 (원본 TeacherApp_Min.html md5 494ee7266dac8d6e3f74d9a4e151f687) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbwrWIC8IueqmmNc2lhcXG9liErlTuHtGKfMwtWu8toh9A_Z4haLY1PZQbfklK9DpxHq/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; data: blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -10630,6 +10630,7 @@ if (s === lastPaint) return;
 lastPaint = s;
 document.documentElement.style.background =
 "linear-gradient(" + top + "," + top + ") 0 0 / 100% 50% no-repeat, " + bottom;
+if (document.body) document.body.style.background = "transparent";
 }
 function shown(id) { var e = document.getElementById(id); return !!e && !e.hidden; }
 function colors() {

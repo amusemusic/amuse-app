@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-member theme-dark">
-<head><!-- 자동으로 만든 파일: 원본은 Member.html 과 그 include — 고치지 말고 ta_build_min.js 로 다시 만듦 --><!-- 회원앱 정식판: mb_beta_build.js --prod 로 만든 파일 (원본 Member_Min.html md5 1168afed8d24195bfb8d884dcb6d829a) — 손으로 고치지 말 것 -->
+<head><!-- 자동으로 만든 파일: 원본은 Member.html 과 그 include — 고치지 말고 ta_build_min.js 로 다시 만듦 --><!-- 회원앱 정식판: mb_beta_build.js --prod 로 만든 파일 (원본 Member_Min.html md5 7235dfd9d7317c2d74bb1031644b3807) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob: https://i.ytimg.com; media-src &#39;self&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;">
@@ -5255,6 +5255,7 @@ if (s === lastPaint) return;
 lastPaint = s;
 document.documentElement.style.background =
 "linear-gradient(" + top + "," + top + ") 0 0 / 100% 50% no-repeat, " + bottom;
+if (document.body) document.body.style.background = "transparent";
 }
 function shown(id) { var e = document.getElementById(id); return !!e && !e.hidden; }
 function colors() {
