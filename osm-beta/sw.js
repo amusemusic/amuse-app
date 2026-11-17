@@ -6,7 +6,7 @@
  * - 저장본 이름 amuse-ombeta-shell-<판> — 강사앱(amuse-shell-*) · OS 앱(amuse-os-shell-*) · 회원/강사 시험판(amuse-mbeta-* · amuse-tbeta-*) 저장본과 겹치지 않음 (서로 지우지 않음)
  * - intro.mp4 요청 자체는 건드리지 않음 (아이폰 사파리 조각 요청) — 화면이 저장본을 직접 꺼내 씀
  */
-var VERSION = '5069e6839751';
+var VERSION = 'cc78770970d8';
 var CACHE = 'amuse-ombeta-shell-' + VERSION;
 var SHELL = ['./', './index.html', './manifest.webmanifest', '../icons/icon-192.png'];
 var INTRO = '../intro.mp4';
