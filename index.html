@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-teacher">
-<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 494ee7266dac8d6e3f74d9a4e151f687) — 손으로 고치지 말 것 -->
+<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 611ef2a7a211193d60ae4ec1815436d5) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; data: blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -8367,8 +8367,10 @@ $("reportButton").textContent = "진도사항 내보내기";
 }
 })
 .catch(function (error) {
+var refused = /담당 학생이 아니/.test(String(error && error.message));
+if (refused) { delete state.details[studentId]; lsDrop("stu:" + studentId); }
 if (mine !== sheetSeq) return;
-if (!cached) closeSheet();
+if (!cached || refused) closeSheet();
 toast(error.message, true);
 });
 }
@@ -8381,6 +8383,8 @@ if (state.writingStudents[studentId] || (state.studentGen[studentId] || 0) !== g
 if ((tries || 0) >= 3) return null;
 return idle().then(function () { return loadDetail(studentId, true, (tries || 0) + 1); });
 }
+var prev = state.details[studentId] || lsGet("stu:" + studentId, 3 * 864e5);
+if (!Array.isArray(detail.consultMemos) && prev && Array.isArray(prev.consultMemos)) detail.consultMemos = prev.consultMemos;
 state.details[studentId] = detail;
 lsPut("stu:" + studentId, detail);
 return detail;
@@ -8585,6 +8589,7 @@ sheetHead(esc(s.name), labels.map(function (l) { return clsBadge({ classLabel: l
 gapHistoryHtml(detail, studentId || s.studentId) +
 consult +
 memoSection +
+consultMemoSection(detail.consultMemos) +
 (info ? '<h3 class="section-title">정보</h3><div>' + info + "</div>" : "") +
 '<h3 class="section-title">회차별 진도 기록' + (lessons.length ? " · " + lessons.length + "회" : "") + '</h3>' +
 (lessons.length
@@ -8595,6 +8600,14 @@ memoSection +
 (history || '<div class="empty" style="padding:20px">아직 기록이 없어요</div>') + "</div>" +
 prevProgressHtml(prev)
 );
+}
+function consultMemoSection(list) {
+if (!Array.isArray(list) || !list.length) return "";
+return '<h3 class="section-title">상담 메모</h3><p class="sec-cap" style="color:var(--ink-2)">상담할 때 학원에서 적은 메모예요</p>' +
+list.map(function (m, i) {
+return '<p class="sec-cap" style="color:var(--ink-2)' + (i ? ';margin-top:10px' : "") + '">' + esc(m.at ? m.at + " 상담" : "상담") + "</p>" +
+'<div class="note-box memo-box">' + esc(m.text) + "</div>";
+}).join("");
 }
 function enrollmentNotes(e) {
 var out = "";
