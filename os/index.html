@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-osm">
-<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 b17810f360a9a562836670ba4dd10a9c) — 손으로 고치지 말 것 --><!--omsrc:ddb6af5a46b35a16f57f6df59f5c85d6:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
+<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 6a6f2ceabc6df049d9c275e3e971b799) — 손으로 고치지 말 것 --><!--omsrc:c89a28f2703c77af25a749f7dcbf31d0:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; &#39;unsafe-inline&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src &#39;self&#39; data: https://cdn.jsdelivr.net; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -1871,13 +1871,13 @@ return c.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"
 });
 }
 function saveToday(data) {
-var token = state.token, day = ymd(new Date()), c = subtle();
+var token = state.token, day = ymd(new Date()), c = subtle(), saves = todaySaves;
 if (!token || !c || !data) return;
 var iv = window.crypto.getRandomValues(new Uint8Array(12));
 savedKeyOf(token).then(function (key) {
 return c.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(JSON.stringify({ day: day, d: data })));
 }).then(function (sealed) {
-if (state.token !== token || savesOff()) return;
+if (state.token !== token || savesOff() || saves !== todaySaves) return;
 var text = JSON.stringify({ v: 1, iv: b64(iv), c: b64(sealed) });
 try { window.localStorage.setItem(SAVED_KEY, text); }
 catch (e) {
@@ -1906,6 +1906,8 @@ var listMark = { s: null, p: null, f: null };
 var listSave = { timers: {}, data: {}, seq: { s: 0, p: 0, f: 0 } };
 var listLiveAt = { s: 0, p: 0, f: 0 };
 var writeOwner = "";
+var todayHold = false;
+var todaySaves = 0;
 function savesOff() { var w = window.AmuseWrap; return !!w && w.noSave === true; }
 function notMine(owner, key) {
 if (state.token && (!owner || owner === state.token)) return false;
@@ -2112,6 +2114,8 @@ state.gridX = 0;
 listMark = { s: null, p: null, f: null };
 listLiveAt = { s: 0, p: 0, f: 0 };
 writeOwner = "";
+todayHold = false;
+exDeleting = "";
 LIST_KINDS.forEach(drawListNote);
 net.at = {};
 net.inflight = {};
@@ -2378,6 +2382,7 @@ renderToday();
 });
 }
 function gotToday(data) {
+todayHold = false;
 state.today = data;
 state.todayDate = ymd(new Date());
 state.todayError = "";
@@ -2511,8 +2516,9 @@ return (
 '<div class="row-meta">' + metaParts([esc(r.label)]) + "</div>" +
 "</div>" +
 '<div class="row-side"><span class="chip re">재등록</span>' +
+(todayHold ? "" :
 '<button class="btn btn-ghost re-pay" type="button" aria-label="' + esc(r.name + " 결제 등록") + '" ' +
-'onclick="event.stopPropagation();OSM.openPayment(' + jsArg(r.studentId) + "," + jsArg(r.enrollmentId || "") + ')">결제</button>' +
+'onclick="event.stopPropagation();OSM.openPayment(' + jsArg(r.studentId) + "," + jsArg(r.enrollmentId || "") + ')">결제</button>') +
 "</div>" +
 "</div>"
 );
@@ -2643,6 +2649,7 @@ var s = liveStudentOf(studentId);
 if (s && needsRenewal(s)) return String(s.renewal.enrollmentId || "");
 var d = state.details[studentId];
 if (d && d.renewal && d.renewal.needed === true) return String(d.renewal.enrollmentId || "");
+if (todayHold) return "";
 var r = ((state.today && state.today.renewals) || []).filter(function (x) { return x.studentId === studentId; })[0];
 return r ? String(r.enrollmentId || "") : "";
 }
@@ -2806,7 +2813,7 @@ esc(won(p.finalAmount) + (p.method ? " · " + p.method : "")) + (payChip(p.statu
 "</div>"
 );
 }
-function openStudent(studentId) {
+function openStudent(studentId, keptMemos) {
 if (!studentId) return;
 var row = studentOf(studentId) || {};
 var cached = state.details[studentId];
@@ -2817,9 +2824,14 @@ status: row.status || ""
 };
 var mine = openSheet(cached ? detailHtml(cached, studentId) : studentShell(head, studentId), "student:" + studentId);
 var shown = cached ? JSON.stringify(cached) : "";
+var token = state.token, tries = 0;
+var fetchDetail = function () {
 read("stu:" + studentId, "getOsmStudentJson", [studentId, cached && typeof cached.v === "string" ? cached.v : ""], { quiet: !!cached })
 .then(function (detail) {
-if (!detail) return;
+if (!detail) {
+if (!cached && mine === sheetSeq && state.token && state.token === token && tries < 3) { tries++; fetchDetail(); }
+return;
+}
 if (detail.same) {
 if (cached && state.details[studentId] === cached && Array.isArray(detail.consultMemos) &&
 JSON.stringify(detail.consultMemos) !== JSON.stringify(cached.consultMemos || [])) {
@@ -2829,6 +2841,7 @@ if (mine === sheetSeq) replaceSheetBody(detailHtml(cached, studentId));
 return;
 }
 if (!Array.isArray(detail.consultMemos) && cached) detail.consultMemos = cached.consultMemos;
+if (!Array.isArray(detail.consultMemos) && Array.isArray(keptMemos)) detail.consultMemos = keptMemos;
 state.details[studentId] = detail;
 if (mine !== sheetSeq) return;
 if (JSON.stringify(detail) !== shown) replaceSheetBody(detailHtml(detail, studentId));
@@ -2838,6 +2851,8 @@ if (mine !== sheetSeq) return;
 if (!cached) closeSheet();
 toast(error.message, true);
 });
+};
+fetchDetail();
 }
 function loadPayments(quiet, limit) {
 var want = limit || state.payLimit || PAY_FIRST;
@@ -3020,7 +3035,7 @@ var btn = $("pcGo");
 pc.busy = true;
 if (btn) { btn.disabled = true; btn.textContent = "취소하는 중..."; }
 var seen = { futureSlots: Number(v.futureSlots || 0), studentIds: Array.isArray(v.studentIds) ? v.studentIds.slice() : [] };
-rpc(true, "cancelPaymentJson", [paymentId, { seen: seen, fresh: { osm: true, limit: state.payLimit || PAY_FIRST } }]).then(function (r) {
+rpc(true, "cancelPaymentJson", [paymentId, { seen: seen }]).then(function (r) {
 pc.busy = false;
 var x = r && typeof r === "object" ? r : {};
 if (x.changed && x.preview) {
@@ -3489,8 +3504,7 @@ baseAmount: base,
 discountAmount: discount,
 finalAmount: Math.max(base - discount, 0),
 method: $("pfMethod").value,
-memo: "",
-fresh: { osm: true, limit: state.payLimit || PAY_FIRST }
+memo: ""
 };
 var mine = sheetSeq;
 var back = pf.back || "";
@@ -3572,6 +3586,7 @@ state.details[studentId] = d;
 if (reopen && d && !d.same && seq === sheetSeq && $("sheet").hidden && !$("appScreen").hidden) openStudent(studentId);
 };
 if (got) { stamp("stu:" + studentId); done(got); }
+else if (reopen && $("sheet").hidden && !$("appScreen").hidden) openStudent(studentId, keptMemos);
 else read("stu:" + studentId, "getOsmStudentJson", [studentId], { quiet: true }).then(done).catch(noop);
 }
 }
@@ -3582,6 +3597,12 @@ if (writeOwner !== state.token) { studentId = ""; reopen = false; fresh = null; 
 var f = fresh && typeof fresh === "object" ? fresh : {}, fp = f.payments;
 if (!Array.isArray(f.studentsList)) { dropListCopy("s"); if (state.students) listUnconfirmed("s"); }
 if (!(fp && fp.data && Array.isArray(fp.data.items) && Number(fp.limit) > 0)) { dropListCopy("p"); if (state.payments) listUnconfirmed("p"); }
+if (!(f.today && typeof f.today === "object" && !Array.isArray(f.today))) {
+todayHold = true;
+todaySaves++;
+dropTodayCopy();
+if (state.today) renderToday();
+}
 applyPaymentReply(studentId, reopen, fresh);
 };
 var FIN_SHOW_KEY = "amuseOA:finShow";
@@ -4078,10 +4099,12 @@ if (listMark.f) {
 return '<p class="pc-wait" role="status">최신 내용을 확인한 뒤에 ' + (x.photoId ? "" : "사진을 넣거나 ") + "지울 수 있어요</p>";
 }
 var failed = !x.photoId && photoFails().indexOf(x.id) !== -1;
+var busy = !!exDeleting;
 return (x.photoId ? "" :
 '<button class="btn ' + (failed ? "btn-danger" : "btn-ghost") + ' btn-block" type="button" onclick="OSM.photoFor(' + jsArg(x.id) + ')">' +
 (failed ? "사진 다시 올리기" : "영수증 사진 넣기") + "</button>") +
-'<button class="link-btn warn" type="button" onclick="OSM.deleteExpense(' + jsArg(x.id) + ')">이 지출 지우기</button>';
+'<button id="exDel" class="link-btn warn" type="button"' + (busy ? " disabled" : "") + ' onclick="OSM.deleteExpense(' + jsArg(x.id) + ')">' +
+(busy ? exDelLabel(x.id) : "이 지출 지우기") + "</button>";
 }
 function exDetailSig(x) {
 return JSON.stringify([x.content, x.category, x.planned, x.amount, x.date, x.vendor, x.memo, x.source, x.photoId]);
@@ -4131,23 +4154,45 @@ if (btn) { btn.disabled = false; btn.textContent = "영수증 보기"; }
 toast(error.message, true);
 });
 }
+var exDeleting = "";
+function exDelLabel(id) {
+return exDeleting === id ? "지우는 중..." : "다른 지출을 지우는 중...";
+}
+function exDelButton(busy) {
+var b = $("exDel");
+if (!b) return;
+b.disabled = busy;
+b.textContent = busy ? "지우는 중..." : "이 지출 지우기";
+}
 function deleteExpense(id) {
 var x = findExpense(id);
 if (!x) return;
+if (exDeleting) {
+if (exDeleting !== id) toast("다른 지출을 지우는 중이에요. 끝나면 다시 눌러 주세요.", true);
+return;
+}
 ask({
 title: "이 지출을 지울까요?",
 text: won(x.amount) + " · " + md(x.date) + " · " + x.category + (x.content && x.content !== x.category ? " · " + x.content : "") +
 "\n지우면 이번 달 지출에서 빠져요. 기록은 남아서 PC 재무관리 '지운 지출 보기'에서 되살릴 수 있어요.",
 yes: "지우기"
 }, function () {
+if (exDeleting) return;
 var mine = sheetSeq;
+exDeleting = id;
+exDelButton(true);
 rpc(true, "deleteExpenseJson", [id, { osm: true }]).then(function (r) {
+exDeleting = "";
 var v = r && typeof r === "object" ? r : {};
 setPhotoFail(id, false);
-if (mine === sheetSeq) closeSheet();
+if (mine === sheetSeq || sheetTag === "exp:" + id) closeSheet(); else exDelButton(false);
 if (v.view) gotFinance(v.view); else loadFinance(true);
 toast("지출을 지웠어요");
-}, function (error) { toast(error.message, true); });
+}, function (error) {
+exDeleting = "";
+exDelButton(false);
+toast(error.message, true);
+});
 });
 }
 var askFn = null;

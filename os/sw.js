@@ -7,7 +7,7 @@
  * - legacy.html 도 저장: 끄기 스위치 · PC 에서 인터넷이 끊겨도 브라우저 오류 대신 예전 화면(연결 안내 · 다시 시도)이 뜸
  * - intro.mp4 요청 자체는 건드리지 않음 (아이폰 사파리 조각 요청) — 화면이 저장본을 직접 꺼내 씀
  */
-var VERSION = '9707bd67c644';
+var VERSION = '720f03b3cab5';
 var CACHE = 'amuse-os-shell-app-' + VERSION;
 var CLEAN = 'amuse-os-shell-';
 var ICON = '../icons/icon-192.png';
