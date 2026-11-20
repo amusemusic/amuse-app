@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-osm">
-<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 6a6f2ceabc6df049d9c275e3e971b799) — 손으로 고치지 말 것 --><!--omsrc:c89a28f2703c77af25a749f7dcbf31d0:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
+<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 45397cf60d6d11f61fd536f291602a58) — 손으로 고치지 말 것 --><!--omsrc:94abeb05add809021a4003a75c8831c3:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; &#39;unsafe-inline&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src &#39;self&#39; data: https://cdn.jsdelivr.net; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -3179,6 +3179,11 @@ if (!sel || sel.value) return;
 var list = pfProductsFor(subject);
 if (list.length === 1) sel.value = list[0].productId;
 }
+function pfTeaches(name, subject) {
+var t = ((state.payForm && state.payForm.teachers) || []).filter(function (x) { return x.name === name; })[0];
+if (!t || !String(t.subject || "").trim() || !subject) return true;
+return String(t.subject).split(/[,·\/]/).map(function (x) { return x.trim(); }).indexOf(subject) !== -1;
+}
 function pfAutoTeacher(subject) {
 var sel = $("pfTeacher");
 if (!sel || sel.value || !subject) return;
@@ -3189,7 +3194,10 @@ if (list.length === 1 && hasOption(sel, list[0].name)) sel.value = list[0].name;
 }
 function pfShowFill(kind) {
 var note = $("pfFillNote");
-if (note) note.hidden = kind !== "past";
+if (note) {
+note.hidden = kind !== "past" && kind !== "last";
+if (!note.hidden) note.textContent = kind === "last" ? "지난 결제로 채움" : "지난 수강권으로 채움";
+}
 var row = document.querySelector("#sheetBody .sheet-head-row");
 if (!row) return;
 var chips = row.querySelector(".head-chips");
@@ -3203,17 +3211,23 @@ chips.parentNode.removeChild(chips);
 function pfApply(pre, kind) {
 if (!$("pfSubject") || !$("pfProduct") || !$("pfTeacher")) return;
 var FILLED = ["pfSubject", "pfTeacher", "pfProduct"];
+var touched = pf.touched || {};
 var before = {};
 FILLED.forEach(function (id) { before[id] = String($(id).value || "").trim(); });
-if (pre.subject) pfSetSubject(pre.subject);
+if (pre.subject && !touched.pfSubject) pfSetSubject(pre.subject);
 var subject = $("pfSubject").value;
-$("pfProduct").innerHTML = pfProductOptions(subject, pre.productId || "");
-if (pre.productId && hasOption($("pfProduct"), pre.productId)) $("pfProduct").value = pre.productId;
-pfAutoProduct(subject);
+var foreign = !!pre.subject && pre.subject !== subject;
+var wantProduct = touched.pfProduct || foreign ? before.pfProduct : pre.productId || "";
+$("pfProduct").innerHTML = pfProductOptions(subject, wantProduct);
+if (wantProduct && hasOption($("pfProduct"), wantProduct)) $("pfProduct").value = wantProduct;
+if (!pre.noAuto) pfAutoProduct(subject);
 var t = $("pfTeacher");
-t.value = pre.teacherName && hasOption(t, pre.teacherName) ? pre.teacherName : "";
+if (!touched.pfTeacher) {
+if (!foreign) t.value = pre.teacherName && hasOption(t, pre.teacherName) ? pre.teacherName : "";
+else if (t.value && !pfTeaches(t.value, subject)) t.value = "";
+}
 pfAutoTeacher(subject);
-pfShowFill(kind);
+pfShowFill(foreign && kind !== "renew" ? "" : kind);
 pfUpdatePrice();
 if (sheetBase) FILLED.forEach(function (id) { if (before[id] === sheetBase[id]) sheetBase[id] = String($(id).value || "").trim(); });
 pf.filled = kind ? pfVals() : null;
@@ -3222,16 +3236,87 @@ function pfVals() {
 return ["pfSubject", "pfTeacher", "pfProduct"].map(function (id) { return $(id) ? String($(id).value || "") : ""; }).join("\u0001");
 }
 function pfUndoFill() {
+pfUndoMethod();
 if (!pf.filled || !pf.start || pfVals() !== pf.filled) { pf.filled = null; return; }
 var st = pf.start.split("\u0001");
 pfApply({ subject: st[0], teacherName: st[1], productId: st[2] }, "");
+}
+function pfLastPay(studentId) {
+var s = liveStudentOf(studentId);
+var lp = s && s.lastPay;
+if (!lp || typeof lp !== "object") return null;
+return {
+subject: pfCanon(lp.subject),
+teacherName: String(lp.teacher || "").trim(),
+productId: String(lp.productId || "").trim(),
+method: String(lp.method || "").trim()
+};
+}
+function pfSetMethod(m) {
+var sel = $("pfMethod");
+if (!sel || !m || (pf.touched || {}).pfMethod || !hasOption(sel, m)) return false;
+var before = String(sel.value || "");
+if (pf.methodStart === undefined) pf.methodStart = before;
+sel.value = m;
+syncSeg("pfMethod");
+if (sheetBase && sheetBase.pfMethod === before) sheetBase.pfMethod = m;
+pf.methodFilled = m;
+return true;
+}
+function pfUndoMethod() {
+var sel = $("pfMethod");
+if (!sel || pf.methodFilled === undefined || pf.methodStart === undefined) return;
+if (!(pf.touched || {}).pfMethod && sel.value === pf.methodFilled && hasOption(sel, pf.methodStart)) {
+var before = sel.value;
+sel.value = pf.methodStart;
+syncSeg("pfMethod");
+if (sheetBase && sheetBase.pfMethod === before) sheetBase.pfMethod = pf.methodStart;
+}
+pf.methodFilled = undefined;
+}
+function pfFillLast(lp, whole, kind) {
+if (!lp || !$("pfSubject")) return false;
+var used = false, foreign = false;
+if (whole) {
+foreign = !!lp.subject && !!(pf.touched || {}).pfSubject && lp.subject !== $("pfSubject").value;
+var okProduct = !!lp.productId && pfProductsFor(lp.subject || $("pfSubject").value).some(function (p) { return p.productId === lp.productId; });
+pfApply({ subject: lp.subject, teacherName: lp.teacherName, productId: okProduct ? lp.productId : "", noAuto: !okProduct }, kind);
+used = !foreign;
+} else if (!lp.subject || lp.subject === $("pfSubject").value) {
+var touched = pf.touched || {};
+var before = { pfTeacher: String($("pfTeacher").value || ""), pfProduct: String($("pfProduct").value || "") };
+if (!touched.pfTeacher && !before.pfTeacher && lp.teacherName && hasOption($("pfTeacher"), lp.teacherName)) { $("pfTeacher").value = lp.teacherName; used = true; }
+if (!touched.pfProduct && !before.pfProduct && lp.productId && hasOption($("pfProduct"), lp.productId)) { $("pfProduct").value = lp.productId; used = true; }
+if (used) {
+if (sheetBase) ["pfTeacher", "pfProduct"].forEach(function (id) { if (sheetBase[id] === before[id]) sheetBase[id] = String($(id).value || ""); });
+if (pf.filled) pf.filled = pfVals();
+pfUpdatePrice();
+}
+}
+if (pfSetMethod(lp.method)) {
+if (foreign && kind !== "renew") pfShowFill("last");
+used = true;
+}
+return used;
+}
+function pfTouch(id) {
+(pf.touched = pf.touched || {})[id] = true;
+if (id === "pfSubject") pfSubjectChanged();
+else if (id !== "pfMethod") pfUpdatePrice();
 }
 function pfFillFrom(studentId) {
 var s = liveStudentOf(studentId);
 var renew = renewalIdOf(studentId);
 var e = bestEnrollment(s && s.enrollments);
-if (e) pfApply({ subject: pfCanon(e.subject), teacherName: enrollTeacher(e), productId: "" }, renew ? "renew" : "past");
-else { pfUndoFill(); pfShowFill(renew ? "renew" : ""); }
+var lp = pfLastPay(studentId);
+pfUndoMethod();
+if (e) {
+pfApply({ subject: pfCanon(e.subject), teacherName: enrollTeacher(e), productId: "" }, renew ? "renew" : "past");
+if (pfFillLast(lp, false) && !renew) pfShowFill("last");
+} else if (lp) {
+pfFillLast(lp, true, renew ? "renew" : "last");
+pf.filled = pfVals();
+} else { pfUndoFill(); pfShowFill(renew ? "renew" : ""); }
 if (!renew) return;
 var mine = sheetSeq;
 var asked = pfVals();
@@ -3406,15 +3491,15 @@ return (
 '<div class="field"><span>학생</span><div id="pfStudentBox">' + pfStudentBox() + "</div>" +
 '<input id="pfStudentId" class="vh" tabindex="-1" aria-hidden="true" value="' + esc(pf.studentId) + '"></div>' +
 '<p id="pfFillNote" class="pf-fill-note" role="status"' + (pre.fill === "past" ? "" : " hidden") + ">지난 수강권으로 채움</p>" +
-segField("pfSubject", "과목", subjects.map(function (s) { return { value: s, label: s }; }), subject, "OSM.pfSubjectChanged()") +
-'<label class="field"><span>담당 강사</span><select id="pfTeacher" onchange="OSM.pfUpdatePrice()">' + pfTeacherOptions(pre.teacherName || "") + "</select></label>" +
-'<label class="field"><span>상품</span><select id="pfProduct" onchange="OSM.pfUpdatePrice()">' + pfProductOptions(subject, pre.productId || "") + "</select></label>" +
+segField("pfSubject", "과목", subjects.map(function (s) { return { value: s, label: s }; }), subject, "OSM.pfTouch('pfSubject')") +
+'<label class="field"><span>담당 강사</span><select id="pfTeacher" onchange="OSM.pfTouch(\'pfTeacher\')">' + pfTeacherOptions(pre.teacherName || "") + "</select></label>" +
+'<label class="field"><span>상품</span><select id="pfProduct" onchange="OSM.pfTouch(\'pfProduct\')">' + pfProductOptions(subject, pre.productId || "") + "</select></label>" +
 '<div class="two-col">' +
 '<label class="field"><span>기본금액</span><span class="amuse-won"><input id="pfBase" readonly tabindex="-1" data-no-dirty><i aria-hidden="true">원</i></span></label>' +
 '<label class="field"><span>할인</span>' + AmuseInput.wonInputHtml('id="pfDiscount" placeholder="0" oninput="OSM.pfUpdatePrice()"', "") + "</label>" +
 "</div>" +
 '<label class="field"><span>실결제</span><span class="amuse-won"><input id="pfFinal" readonly tabindex="-1" data-no-dirty><i aria-hidden="true">원</i></span></label>' +
-segField("pfMethod", "결제방법", methods.map(function (m) { return { value: m, label: m }; }), method) +
+segField("pfMethod", "결제방법", methods.map(function (m) { return { value: m, label: m }; }), method, "OSM.pfTouch('pfMethod')") +
 '<div id="pfPrepaid" class="pf-prepaid" hidden></div>' +
 '<p id="pfError" class="form-error" role="alert"></p>' +
 '<div class="sheet-actions single"><button id="pfSave" class="btn btn-primary btn-block" type="button" onclick="OSM.savePayment()">저장</button></div>'
@@ -3469,6 +3554,11 @@ pfUpdatePrice();
 sheetBaseline();
 pf.start = [pfSubjects("")[0] || "", "", ""].join("\u0001");
 pf.filled = fill ? pfVals() : null;
+var lp0 = pf.studentId ? pfLastPay(pf.studentId) : null;
+if (lp0) {
+if (fill) { if (pfFillLast(lp0, false) && fill === "past") pfShowFill("last"); }
+else { pfFillLast(lp0, true, "last"); pf.filled = pfVals(); }
+}
 }).catch(function (error) {
 if (mine !== sheetSeq) return;
 closeSheet();
@@ -5645,6 +5735,7 @@ pfSearch: pfSearch,
 pfKey: pfKey,
 pfSubjectChanged: pfSubjectChanged,
 pfUpdatePrice: pfUpdatePrice,
+pfTouch: pfTouch,
 pickSeg: pickSeg,
 savePayment: savePayment,
 askCancelPayment: askCancelPayment,
