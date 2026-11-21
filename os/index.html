@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-osm">
-<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 45397cf60d6d11f61fd536f291602a58) — 손으로 고치지 말 것 --><!--omsrc:94abeb05add809021a4003a75c8831c3:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
+<head><!-- OS 휴대폰 앱 정식판: om_beta_build.js --prod 로 만든 파일 (원본 OSM_Min.html md5 3be1eb616cd0eee916b8b5c0ae5301c6) — 손으로 고치지 말 것 --><!--omsrc:b12bb034221e87bd0fd95cc004e528a2:OSM,TeacherApp_CSS,OSM_CSS,TeacherApp_LogoFull,TeacherApp_Logo,OSM_JS-->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;self&#39; &#39;unsafe-inline&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src &#39;self&#39; data: https://cdn.jsdelivr.net; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;none&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -3594,17 +3594,58 @@ baseAmount: base,
 discountAmount: discount,
 finalAmount: Math.max(base - discount, 0),
 method: $("pfMethod").value,
-memo: ""
+memo: "",
+dupAware: true
 };
+var dup = pfSameToday(data, p);
+if (dup) {
+if (!window.confirm(pfDupText(dup.paymentDate, dup.finalAmount))) return;
+data.allowDuplicate = true;
+}
 var mine = sheetSeq;
 var back = pf.back || "";
 var button = $("pfSave");
 pf.saving = true;
 button.disabled = true;
 button.textContent = "저장 중...";
+pfSend(data, mine, back, button);
+}
+function pfDupText(date, amount) {
+return "오늘 같은 결제가 이미 있어요 (" + String(date || "").slice(5).replace("-", ".") + " · " +
+Number(amount || 0).toLocaleString("ko-KR") + "원). 그래도 한 번 더 저장할까요?";
+}
+function pfSameToday(data, p) {
+var d = new Date();
+var today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+var ticket = String((p && p.name) || "").trim();
+if (!ticket) return null;
+var same = function (x, sid) {
+var st = String(x.paymentStatus || x.status || "").trim();
+return !!x && (x.studentId || sid) === data.studentId && String(x.paymentDate || "") === today &&
+String(x.ticket || "").trim() === ticket && Number(x.finalAmount || 0) === Number(data.finalAmount || 0) &&
+st !== "취소" && st !== "환불완료" && x.pairRole !== "merged";
+};
+var fromList = (state.payments || []).filter(function (x) { return same(x, ""); })[0];
+if (fromList) return fromList;
+var det = state.details[data.studentId];
+return ((det && det.payments) || []).filter(function (x) { return same(x, data.studentId); })[0] || null;
+}
+function pfSend(data, mine, back, button) {
+var studentId = data.studentId;
 rpc(true, "createPayment", [data]).then(function (result) {
-pf.saving = false;
 var r = result && typeof result === "object" ? result : {};
+if (r.needConfirm) {
+if (mine === sheetSeq && !data.allowDuplicate && window.confirm(String(r.message || pfDupText("", data.finalAmount)))) {
+data.allowDuplicate = true;
+pfSend(data, mine, back, button);
+return;
+}
+pf.saving = false;
+if (mine === sheetSeq) { button.disabled = false; button.textContent = "저장"; }
+else toast("결제를 저장하지 않았어요. " + String(r.message || "오늘 같은 결제가 이미 있어요.").replace(/\s*그래도 한 번 더 저장할까요\?$/, "") + " 결제 목록을 확인해 주세요.", true);
+return;
+}
+pf.saving = false;
 try { window.localStorage.setItem(PAY_METHOD_KEY, data.method); } catch (e) {}
 var stillOpen = mine === sheetSeq;
 if (stillOpen) closeSheet();

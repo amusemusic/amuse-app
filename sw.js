@@ -6,7 +6,7 @@
  * - 이 폴더 화면 주소(./ · ./index.html)만 맡음 — 다른 폴더(os/ · cso/ · consult/ · member/ · member-beta/ · teacher-beta/) · legacy.html · intro.mp4 요청 · POST · 다른 주소는 그냥 통과
  * - intro.mp4 요청 자체는 건드리지 않음 (아이폰 사파리 조각 요청) — 화면이 저장본을 직접 꺼내 씀
  */
-var VERSION = '74f6fb8f90cb';
+var VERSION = '9014a01280bc';
 var CACHE = 'amuse-shell-app-' + VERSION;
 var CLEAN = 'amuse-shell-';
 var ICON = 'icons/icon-192.png';
