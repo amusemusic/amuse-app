@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko" class="app-teacher">
-<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 f8e597dcb70b1d829c2c68cfe7608e72) — 손으로 고치지 말 것 -->
+<head><!-- 강사앱 정식판: tb_beta_build.js --prod 로 만든 파일 (원본 TeacherApp_Min.html md5 c9f3b44ab04210a396046649b44b0dd2) — 손으로 고치지 말 것 -->
 <base target="_top">
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; connect-src &#39;self&#39; https://script.google.com/macros/s/AKfycbw1-I-KqG_h6MxDZRTI_wpmjphIUTiZnzNDlD84AZXInsvf931docQOK1kbZ3j9TCvB/exec https://script.googleusercontent.com; img-src &#39;self&#39; data: blob:; media-src &#39;self&#39; data: blob:; style-src &#39;self&#39; &#39;unsafe-inline&#39; https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net data:; script-src &#39;self&#39; &#39;unsafe-inline&#39;; worker-src &#39;self&#39;; manifest-src &#39;self&#39;; base-uri &#39;self&#39;; form-action &#39;none&#39;; object-src &#39;none&#39;">
@@ -99,7 +99,7 @@
   var TOKEN_RE = /^[A-Za-z0-9_-]{16,128}$/;
   var INTRO = "intro.mp4";
   var READS = ["getTeacherBootJson","getTeacherWarmJson","getTeacherAppConfigJson","getTeacherDashboardJson","getTeacherPayMonthJson","getTeacherWeeklyScheduleJson","getTeacherStudentsJson","getTeacherStudentDetailJson","getTeacherPairsJson","getTeacherLessonNoteJson","getTeacherLessonNotesJson","getTeacherWeekdayChangeOptionsJson","getTeacherWeekdayChangePreviewJson","getTeacherGapQueueJson","getTeacherFeedJson","getTeacherFeedPostJson","getTeacherFeedMediaJson","getTeacherNoticeMediaJson"];
-  var WRITES = ["attendTeacherLessonJson","saveTeacherLessonNoteJson","revertTeacherLessonJson","removeWrongTeacherLessonJson","delayTeacherLessonJson","rescheduleTeacherLessonJson","createTeacherLessonJson","createTeacherBlockJson","createTeacherBlocksJson","deleteTeacherBlockJson","classifyTeacherLessonGapsJson","addGapAttendanceJson","recordTeacherPastLessonJson","changeTeacherLessonWeekdayJson","changeTeacherPasswordJson","logoutTeacherJson","warmMemberHomesJson"];
+  var WRITES = ["attendTeacherLessonJson","saveTeacherLessonNoteJson","revertTeacherLessonJson","removeWrongTeacherLessonJson","delayTeacherLessonJson","rescheduleTeacherLessonJson","createTeacherLessonJson","createTeacherBlockJson","createTeacherBlocksJson","deleteTeacherBlockJson","classifyTeacherLessonGapsJson","addGapAttendanceJson","recordTeacherPastLessonJson","changeTeacherLessonWeekdayJson","changeTeacherPasswordJson","logoutTeacherJson","warmMemberHomesJson","ackNewStudentsJson"];
   var LIVE_SESSION = "amuse:session";         // 기존 강사앱(감싸기) 로그인 — 같은 토큰일 때만 지움 (import.js 가 읽어 옴)
   var q = [], qTimer = 0, reloadArmed = false, moving = false;
   var writeEpoch = 0, spec = null, earlyUsed = false, loginBusy = null;
@@ -1461,6 +1461,7 @@ weeks: {},
 weekView: "grid",
 students: null,
 studentsStale: false,
+newBase: null,
 details: {},
 pays: {},
 notes: {},
@@ -1680,6 +1681,7 @@ mark("students");
 sortByName(f.students);
 state.students = f.students;
 state.studentsStale = false;
+newBaseSet(f.students);
 forgetPairs();
 lsPut("students", f.students);
 renderStudents();
@@ -2113,6 +2115,7 @@ clearTimeout(refreshTimer);
 state.token = "";
 state.me = null;
 state.dashboard = state.week = state.students = null;
+state.newBase = null;
 state.dashDate = "";
 state.booting = false;
 state.studentsStale = false;
@@ -4409,18 +4412,22 @@ l._countStale = false;
 if (hasCount && r.enrollmentId && state.students) {
 var changed = false;
 state.students.forEach(function (s) {
+var drop = null;
 (s.enrollments || []).forEach(function (e) {
 if (e.enrollmentId !== r.enrollmentId) return;
 e.remainingCount = r.remainingCount;
 if (r.totalCount) e.totalCount = r.totalCount;
+if (!(Number(e.remainingCount || 0) > 0)) {
+var next = (s.enrollments || []).some(function (o) {
+return o !== e && String(o.subject || "") === String(e.subject || "") && Number(o.remainingCount || 0) > 0;
+});
+if (next) drop = e; else e.renewPending = true;
+}
 changed = true;
 });
+if (drop) s.enrollments = s.enrollments.filter(function (o) { return o !== drop; });
 });
 if (changed) {
-state.students = state.students.filter(function (s) {
-s.enrollments = (s.enrollments || []).filter(function (e) { return Number(e.remainingCount || 0) > 0 || e.prepaidOnly; });
-return s.enrollments.length > 0;
-});
 lsPut("students", state.students);
 renderStudents();
 renderRosterStats();
@@ -5129,7 +5136,7 @@ o.student.studentName + " · " + e.subject + " " + e.ticket +
 }
 function enrollmentMeta(e) {
 var pp = e.prepaid || null;
-return [e.subject, e.ticket, e.prepaidOnly ? "재등록 대기" : "남은 " + e.remainingCount + "회",
+return [e.subject, e.ticket, e.prepaidOnly ? "재등록 전" : "남은 " + e.remainingCount + "회",
 (e.enrollmentIds || []).length > 1 ? "수강권 " + e.enrollmentIds.length + "개 합침" : "",
 pp && Number(pp.prepaidScheduled || 0) ? "결제 전 " + Number(pp.prepaidScheduled) + "개" : "",
 pp && Number(pp.unpaidOwed || 0) ? "결제 전 " + Number(pp.unpaidOwed) + "회 진행" : ""]
@@ -5907,6 +5914,7 @@ if (!data) return null;
 if (Array.isArray(data)) sortByName(data);
 state.students = data;
 state.studentsStale = false;
+if (Array.isArray(data)) newBaseSet(data);
 forgetPairs();
 lsPut("students", data);
 paint();
@@ -6022,6 +6030,7 @@ return '<h3 class="section-title">상담 내용</h3><p class="sec-cap">등록 �
 '<dl class="consult">' + rows + "</dl>";
 }
 var NEW_DAYS = 14;
+var NEW_WAIT_DAYS = 30;
 var NEW_MAX = 3;
 var newAll = false;
 var newSig = "";
@@ -6029,12 +6038,23 @@ function isNewStudent(s) {
 if (!s || (typeof s.startedWithMe !== "boolean" && !s.assignedAt)) return false;
 var st = String(s.status || "");
 if (st === "퇴원" || st === "휴원") return false;
-if (s.startedWithMe === false) return true;
-var since = ymd(addDays(new Date(), -NEW_DAYS));
-return /^\d{4}-\d{2}-\d{2}$/.test(String(s.assignedAt || "")) && s.assignedAt >= since;
+var at = /^\d{4}-\d{2}-\d{2}$/.test(String(s.assignedAt || "")) ? String(s.assignedAt) : "";
+if (s.startedWithMe === false) {
+var cut = ymd(addDays(new Date(), -NEW_WAIT_DAYS));
+var wf = /^\d{4}-\d{2}-\d{2}$/.test(String(s.waitFrom || "")) ? String(s.waitFrom) : "";
+return !at || at >= cut || (!!wf && wf >= cut);
+}
+return !!at && at >= ymd(addDays(new Date(), -NEW_DAYS));
 }
 function studentsNow() {
 return state.students || lsGet("students", 864e5) || null;
+}
+function newList() {
+return state.token && state.me && Array.isArray(state.newBase) ? state.newBase : null;
+}
+function newBaseSet(list) {
+state.newBase = Array.isArray(list) ? list : null;
+newAckSync();
 }
 var SEEN_LS = "amuseTA:seenN:";
 var SEEN_WRAP = "newSeen.";
@@ -6076,7 +6096,51 @@ if (old && old.d && typeof old.d === "object") {
 seenMerge(seen, old.d);
 if (seenSave(seen)) lsRemove([oldKey]);
 }
+(newList() || []).forEach(function (s) {
+if (!s || !s.studentId || !s.newAck) return;
+var o = {};
+o[s.studentId] = s.newAck;
+seenMerge(seen, o);
+});
 return seen;
+}
+var newAckSent = {};
+function newAckPush(entries) {
+var tok = state.token;
+var list = (entries || []).filter(function (x) { return x && x.id && YMD_RE.test(String(x.d || "")) && newAckSent[x.id] !== x.d + "|" + (x.a || ""); });
+if (!tok || !list.length) return;
+list = list.slice(0, 50);
+list.forEach(function (x) { newAckSent[x.id] = x.d + "|" + (x.a || ""); });
+var undo = function () { list.forEach(function (x) { if (newAckSent[x.id] === x.d + "|" + (x.a || "")) delete newAckSent[x.id]; }); };
+setTimeout(function () {
+try {
+if (tok !== state.token || !window.google || !google.script || !google.script.run) { undo(); return; }
+google.script.run
+.withSuccessHandler(function (r) {
+try { if (typeof r === "string") r = JSON.parse(r); } catch (e) { r = null; }
+if (!r || r.ok !== true) { undo(); return; }
+(newList() || []).forEach(function (s) {
+list.forEach(function (x) { if (s && s.studentId === x.id) s.newAck = { d: x.d, a: x.a || null }; });
+});
+})
+.withFailureHandler(undo)
+.ackNewStudentsJson(tok, list.map(function (x) { return { id: x.id, d: x.d, a: x.a || "" }; }));
+} catch (e) { undo(); }
+}, 0);
+}
+function newAckSync() {
+var list = newList();
+if (!list || !seenTid()) return;
+var seen = seenNew();
+var out = [];
+list.forEach(function (s) {
+var e = s && seen[s.studentId];
+if (!e) return;
+var have = s.newAck ? seenEntry(s.newAck) : null;
+if (have && have.d >= e.d) return;
+out.push({ id: s.studentId, d: e.d, a: e.a });
+});
+newAckPush(out);
 }
 function seenSave(seen) {
 var tid = seenTid();
@@ -6097,7 +6161,7 @@ var e = seen[s.studentId];
 if (!e) return false;
 if (e.a === null) return true;
 var now = YMD_RE.test(String(s.assignedAt || "")) ? String(s.assignedAt) : null;
-return now === null || now === e.a;
+return now === null || now === e.a || now <= e.d;
 }
 function newRow(s) {
 var subjects = [];
@@ -6125,19 +6189,26 @@ return (
 "</div>"
 );
 }
+function newRows() {
+var list = newList();
+var seen = list ? seenNew() : {};
+var rows = (list || []).filter(function (s) { return isNewStudent(s) && !seenHides(seen, s); });
+sortByName(rows);
+return rows;
+}
 function renderNewStudents() {
 if (lazyDue) lazyDue.fresh = false;
 var box = $("newBox");
 if (!box) return;
-var list = state.token && state.me ? studentsNow() : null;
-var seen = list ? seenNew() : {};
-var rows = (list || []).filter(function (s) { return isNewStudent(s) && !seenHides(seen, s); });
-sortByName(rows);
+var rows = newRows();
 var more = rows.length > NEW_MAX;
 var html = (more && !newAll ? rows.slice(0, NEW_MAX) : rows).map(newRow).join("") +
 (more
 ? '<button class="link-btn" type="button" onclick="TA.toggleNewAll()">' +
 (newAll ? "접기" : (rows.length - NEW_MAX) + "명 더 보기") + "</button>"
+: "") +
+(rows.length > 1
+? '<button class="link-btn nw-all" type="button" onclick="TA.dismissAllNew()">모두 확인</button>'
 : "");
 if (html !== newSig) {
 newSig = html;
@@ -6174,12 +6245,23 @@ newAll = !newAll;
 renderNewStudents();
 }
 function dismissNew(studentId) {
-if (!studentId || !seenTid()) return;
+dismissNewIds(studentId ? [studentId] : []);
+}
+function dismissAllNew() {
+dismissNewIds(newRows().map(function (s) { return s.studentId; }));
+}
+function dismissNewIds(studentIds) {
+if (!studentIds.length || !seenTid()) return;
 var seen = seenNew();
-var list = studentsNow() || [];
+var list = newList() || studentsNow() || [];
+var today = ymd(new Date());
+var sent = [];
+studentIds.forEach(function (studentId) {
 var stu = null;
 list.forEach(function (s) { if (s && s.studentId === studentId) stu = s; });
-seen[studentId] = { d: ymd(new Date()), a: stu && YMD_RE.test(String(stu.assignedAt || "")) ? String(stu.assignedAt) : null };
+seen[studentId] = { d: today, a: stu && YMD_RE.test(String(stu.assignedAt || "")) ? String(stu.assignedAt) : null };
+sent.push({ id: studentId, d: today, a: seen[studentId].a });
+});
 var cut = ymd(addDays(new Date(), -180));
 var keep = {};
 list.forEach(function (s) { if (s && isNewStudent(s)) keep[s.studentId] = true; });
@@ -6192,6 +6274,7 @@ ids.filter(function (k) { return !keep[k]; })
 .forEach(function (k) { delete seen[k]; });
 }
 seenSave(seen);
+newAckPush(sent);
 renderNewStudents();
 }
 function memoLine(memo) {
@@ -7926,7 +8009,7 @@ sheetHead("지난 수업 기록하기", "", ["최근 2주 · 일정이 없던 �
 list.map(function (x) {
 var en = x.enrollment;
 return '<option value="' + esc(en.enrollmentId) + '"' + (en.enrollmentId === f.eid ? " selected" : "") + ">" +
-esc(x.student.studentName + " · " + en.subject + " " + en.ticket + (en.prepaidOnly ? " (재등록 대기)" : " (남은 " + en.remainingCount + "회)")) + "</option>";
+esc(x.student.studentName + " · " + en.subject + " " + en.ticket + (en.prepaidOnly ? " (재등록 전)" : " (남은 " + en.remainingCount + "회)")) + "</option>";
 }).join("") + "</select></label>" +
 (partner
 ? '<label class="toggle-row"><span><b>함께 수강하는 ' + esc(partner) + "도 같이 기록</b><small>두 학생 모두 같은 시간 · 같은 결과로 남아요.</small></span>" +
@@ -8392,13 +8475,13 @@ return '<span class="chip">' + esc("→ " + e.handover.teacherName + (e.handover
 (function () {
 var n = 0, k = 0, wait = false, seen = {};
 enrollments.forEach(function (e) {
-if (e && e.prepaidOnly) wait = true;
+if (e && (e.prepaidOnly || e.renewPending)) wait = true;
 if (e && e.prepaid && !seen[e.prepaid.key || e.enrollmentId]) {
 seen[e.prepaid.key || e.enrollmentId] = true;
 n += Number(e.prepaid.prepaidScheduled || 0); k += Number(e.prepaid.unpaidOwed || 0);
 }
 });
-var text = [wait && !n && !k ? "재등록 대기" : "", n ? "결제 전 " + n : "", k ? k + "회 진행" : ""].filter(function (x) { return x; }).join(" · ");
+var text = [wait && !n && !k ? "재등록 전" : "", n ? "결제 전 " + n : "", k ? k + "회 진행" : ""].filter(function (x) { return x; }).join(" · ");
 return text ? '<span class="chip prepaid">' + esc(text) + "</span>" : "";
 })();
 return (
@@ -8758,7 +8841,7 @@ var pn = pp ? Number(pp.prepaidScheduled || 0) : 0;
 var pk = pp ? Number(pp.unpaidOwed || 0) : 0;
 if (pn || pk || (e && e.prepaidOnly)) {
 out += '<small class="en-note"><span class="chip prepaid">결제 전</span> ' +
-esc([pn ? "수업 " + pn + "개 잡혀 있음" : "", pk ? pk + "회 진행" : "", !pn && !pk ? "재등록 대기" : ""]
+esc([pn ? "수업 " + pn + "개 잡혀 있음" : "", pk ? pk + "회 진행" : "", !pn && !pk ? "재등록 전" : ""]
 .filter(function (x) { return x; }).join(" · ")) + "</small>";
 }
 return out;
@@ -10511,6 +10594,7 @@ deleteBlock: deleteBlock,
 explainRate: explainRate,
 explainRateKey: explainRateKey,
 dismissNew: dismissNew,
+dismissAllNew: dismissAllNew,
 toggleNewAll: toggleNewAll,
 toggleNewOpen: toggleNewOpen,
 openNextLesson: guardSheet(openNextLesson),
