@@ -18,21 +18,26 @@
    - 서버(127)는 지금과 같은 OsWeb.run_ 으로 부름 → 세션 · 원장 확인 · 원장 지문 · requireAdmin_ · 위험한 일 비밀번호 확인은 지금 그대로 서버에서
    - 읽기(READS): 같은 순간(같은 틱)에 부른 같은 토큰의 읽기는 한 번(batch · 최대 8개)으로 묶음 · 첫 데이터(getOsBootJson)는 묶지 않음
             시간 한도 30초 + 묶음 한 칸마다 10초 · 전송 실패면 한 번만 조용히 다시 · 시간 한도로 끊은 것은 다시 보내지 않음
+            큰 화면 읽기(학생 목록 · 상세 · 결제 · 설정 묶음)도 묶지 않음 · 한 번에 3개까지 · 화면 읽기가 먼저, 뒤에서 하는 일은 그 뒤 (속도 3차)
+   - 답마다 함께 온 데이터 버전(sv)은 Main_View AmuseLive.sv 로 (버전 확인 한 번처럼 · 그 사이 20초 확인은 쉼)
    - 그 밖(쓰기 · 미리보기 · 큰 답) · 로그인 · 로그아웃 · 비밀번호 한 번 더: 늘 하나씩 · 다시 보내지 않음 · 시간 한도 없음 (google.script.run 처럼)
             보낸 뒤 연결이 끊기면 "네트워크 오류 — 처리 여부를 확인하려면 새로고침하세요"
    - 메뉴 화면 묶음(getMainPagesBundle · getMainPage): 이 시험판에 함께 올린 pages-<판>.json 으로 답함 (서버에 묻지 않음 · 못 읽으면 서버로)
    - 저장된 첫 화면(대시보드): 이 로그인 토큰으로 잠가 둠 — 유지 로그인은 이 PC localStorage · 아니면 이 탭 sessionStorage (게이트 규칙 그대로)
-   - 메뉴 자료(amuseFresh): 유지 로그인일 때만 IndexedDB 에 잠가 둠 (AES-GCM · 열쇠 = 토큰에서 만듦 · 기기에 저장하지 않음) · 상담 · 회원 · 범위 없는 자료는 두지 않음
-   - 로그아웃 · 로그인 끝 → 그 토큰의 저장본을 지움
-   - MOVED(끄기 스위치 amuseOpApiOff): 지우지 않고 예전 PC 화면(legacy.html)으로 · 10분 동안은 열자마자 그쪽으로
+   - 메뉴 자료(amuseFresh): 유지 로그인일 때만 IndexedDB 에 잠가 둠 (AES-GCM · 열쇠 = 토큰에서 만듦 · 기기에 저장하지 않음)
+     "menu:<이름>" (상담 · 회원 · 공지 · 설정 묶음 포함 — 화면은 받아 둔 것을 바로 그리고 늘 뒤에서 확인) · "pack:details" (학생 상세 묶음) 도 (2026-11-24 속도 2차)
+     그 밖의 범위 없는 자료는 두지 않음 · 한 칸 3MB (상세 묶음 8MB) · 모두 20MB · 500칸 넘으면 오래 쓰지 않은 것부터 지움
+     열 때 (게이트가 로그인을 알려 주자마자) 읽어서 화면이 서버를 부르기 전에 되살림 · 이 시험판 판(BUILD)이 다르면 자료는 두되 "최신 아님"
+   - 로그아웃 · 로그인 끝(OSWEB_AUTH) · 끄기 스위치(MOVED) → 저장본을 지움
+   - MOVED(끄기 스위치 amuseOpApiOff): 예전 PC 화면(legacy.html)으로 · 10분 동안은 열자마자 그쪽으로
      그때 보낸 쓰기는 서버가 하지 않았으므로 "저장되지 않았어요" · 이미 서버로 간 쓰기가 있으면 답을 받은 뒤 옮김 (60초까지)
    - 판 맞추기: 서버 화면 판(nb)이 이 시험판 판과 다르면 (열 때 · 로그인 때만) 새 판을 받아 한 번 다시 열고, 그래도 다르면 10분 동안 예전 화면 */
 (function () {
   "use strict";
   var EXEC = "https://script.google.com/macros/s/AKfycbzcboXtXN-ppVevFf3FHj0oS7u4uI9V5Ub7LFlLE5p0sEbSSm-CdjgIArn_uJLQ4JPo/exec";
-  var BUILD = "56afbb2fed56.8ccea51525d9";
-  var PAGES = "pages-2c2027c701e6.json";
-  var READS = ["getOsBootJson","getDataVersionJson","getDashboardDataJson","getGapNoticesJson","getBackupNoticeJson","getSubjectsJson","getClassCatalogJson","getHolidaysJson","getSettingsJson","getAutoBackupJson","getAutoWarmJson","getWorkspaceStudentListJson","getWorkspaceStudentDetailJson","getStudentGapWeeksJson","getScheduleBoardJson","getScheduleBoardConfigJson","getScheduleBookableJson","getSchedulePairsJson","getTrialsJson","getLessonGapsJson","getGapStatsJson","getPaymentListJson","getPaymentStudentListJson","getPaymentTeacherListJson","getPaymentEnrollmentJson","getPaymentDetailJson","getTeacherStatsJson","getTeacherHrJson","getTeacherNoticesAdminJson","getPayrollJson","getMonthlyReportJson","getFinanceMonthJson","getConsultPageJson","getConsultPulseJson","getMemberAdminPulseJson","getOsMenusJson","getPaymentPageJson"];
+  var BUILD = "ab08265dba5e.5b836040ae3a";
+  var PAGES = "pages-163014882ebf.json";
+  var READS = ["getOsBootJson","getDataVersionJson","getDashboardDataJson","getGapNoticesJson","getBackupNoticeJson","getSubjectsJson","getClassCatalogJson","getHolidaysJson","getSettingsJson","getAutoBackupJson","getAutoWarmJson","getWorkspaceStudentListJson","getWorkspaceStudentDetailJson","getStudentGapWeeksJson","getScheduleBoardJson","getScheduleBoardConfigJson","getScheduleBookableJson","getSchedulePairsJson","getTrialsJson","getLessonGapsJson","getGapStatsJson","getPaymentListJson","getPaymentStudentListJson","getPaymentTeacherListJson","getPaymentEnrollmentJson","getPaymentDetailJson","getTeacherStatsJson","getTeacherHrJson","getTeacherNoticesAdminJson","getPayrollJson","getMonthlyReportJson","getFinanceMonthJson","getConsultPageJson","getConsultPulseJson","getMemberAdminPulseJson","getOsMenusJson","getPaymentPageJson","getSettingsPageJson"];
   var API = EXEC;
   var P = "amuseOP:";
   var KEEP = P + "keep", SCREEN = P + "screen", VER = P + "ver", SUBJ = P + "subj", UNTIL = P + "fallbackUntil", NB = P + "nb";
@@ -40,7 +45,16 @@
   var IDB = "amuseOPData", IDB_STORE = "c";
   var READ_MS = 30000, READ_EXTRA_MS = 10000, LOGIN_MS = 60000, BODY_MS = 90000;
   var BODY_MAX = 250000, BATCH_BODY_MAX = 60000, BATCH_MAX = 8;
-  var NO_BATCH = ["getOsBootJson"];
+  // 묶지 않는 읽기: 첫 데이터 · 뒤에서 받는 큰 미리 받기 · 큰 화면 읽기 (묶음은 서버에서 차례로 돌아서 · 같이 묶인 가벼운 읽기가 이것을 기다리지 않게) — 미리 받기는 시간 한도도 길게
+  var NO_BATCH = ["getOsBootJson", "getOsMenusJson", "getWorkspaceStudentDetailsJson",
+    "getWorkspaceStudentListJson", "getWorkspaceStudentDetailJson", "getPaymentPageJson", "getSettingsPageJson"];
+  // 차례 (2026-11-24 속도 3차): 한 번에 서버로 가는 것은 CAP 개까지 · 화면 읽기가 먼저
+  //   뒤에서 하는 일(미리 받기 · 데우기 · 상세 묶음 · 버전 확인)은 화면 읽기가 기다리지 않을 때만 · LOW_CAP 개까지 · 마지막 빈자리는 늘 화면 몫으로 남김
+  //   뒤에서 하는 일은 한 번에 하나 (리뷰: 둘이 가 있으면 학생 목록 + 상세처럼 화면 읽기 둘 중 하나가 기다렸음)
+  //   저장은 기다리지 않고 부른 차례대로 바로 (빈자리는 셈)
+  var CAP = 3, LOW_CAP = 1;
+  var LOW = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getDataVersionJson", "getWarmupJson"];
+  var LONG_READS = ["getOsMenusJson", "getWorkspaceStudentDetailsJson"], LONG_READ_MS = 90000;
   var LOCAL_PAGES = ["getMainPagesBundle", "getMainPage"];
   var FALLBACK_MS = 600000, MOVED_MS = 2500, WRITE_WAIT_MS = 60000, WRITE_UNKNOWN_MS = 8000;
   var EARLY_MS = 20000;                         // 판 맞추기는 열고 이 시간 안 (또는 로그인 · 첫 데이터 답) 에만
@@ -52,12 +66,13 @@
   var WRITE_UNKNOWN = "저장 결과를 받지 못했어요. 이전 화면에서 먼저 확인해 주세요";
   var TOO_BIG = "내용이 너무 많아요. 나눠서 올려 주세요.";
   var PERSIST_MAX = 3000000, PERSIST_SKIP = /consult|member|notice|backup|warm|pulse|request|post|intro/i;
+  var PERSIST_ALWAYS = /^(menu|pack):/, PACK_MAX = 8000000, TOTAL_MAX = 20000000, COUNT_MAX = 500;
   var LOADED_AT = Date.now();
 
-  var q = [], qTimer = 0, moving = false, movedBox = null, writesBusy = 0, leaveArmed = false, leaveCap = 0, left = false;
+  var hi = [], lo = [], busyHi = 0, busyLo = 0, pumpTimer = 0, hiAt = 0, moving = false, movedBox = null, writesBusy = 0, leaveArmed = false, leaveCap = 0, left = false;
   var loginBusy = null, nbSeen = false, lastPing = 0;
   var cur = { token: "", keep: false };         // 지금 로그인 (게이트 onSession)
-  var stat = { posts: 0, batches: 0, calls: 0, writes: 0, local: 0, resent: 0, pings: 0, persisted: 0, restored: 0 };
+  var stat = { posts: 0, batches: 0, calls: 0, writes: 0, local: 0, resent: 0, pings: 0, persisted: 0, restored: 0, low: 0, promoted: 0, maxBusy: 0, sv: 0 };
   stat.times = [];                              // POST 마다 { fn, ms, len, res } — 이름 · 시간 · 글자 수만 (메모리)
 
   function has(list, n) { return list.indexOf(n) !== -1; }
@@ -147,7 +162,16 @@
     if (obj.amuseApi === "BAD") return { kind: "bad" };
     if (obj.amuseApi !== "OK" || (n !== undefined && (!Array.isArray(obj.r) || obj.r.length < n))) return { kind: "fail" };
     meta(obj, early);
-    return { kind: "ok", items: obj.r || [] };
+    return { kind: "ok", items: obj.r || [], sv: obj.sv };
+  }
+
+  /** 답에 함께 온 데이터 버전 (127 "sv" — getDataVersionJson 답과 같은 것) → Main_View AmuseLive.sv (화면 처리기가 답을 먼저 받은 뒤) · t0 = 보낸 시각 */
+  function svLater(sv, t0, write) {
+    if (sv === undefined || sv === null || moving) return;
+    stat.sv++;
+    setTimeout(function () {
+      try { if (window.AmuseLive && typeof window.AmuseLive.sv === "function") window.AmuseLive.sv(sv, t0, { write: !!write }); } catch (e) {}
+    }, 0);
   }
 
   /** 서버가 함께 보낸 것: 데이터 버전 · 과목 (다음에 열 때 화면 틀에 넣음 — 개인정보 없음) · 서버 화면 판 */
@@ -205,8 +229,11 @@
   function moved() {
     if (movedBox) return;
     moving = true;
-    q = []; clearTimeout(qTimer); qTimer = 0;
+    var held = hi.concat(lo);
+    hi = []; lo = []; clearTimeout(pumpTimer); pumpTimer = 0;
+    held.forEach(function (c) { if (c.write) movedWrite(c); });   // 아직 보내지 않은 쓰기: 서버가 하지 않음 (쓰기 셈도 닫힘)
     lsSet(UNTIL, String(Date.now() + FALLBACK_MS));
+    try { pend = {}; clearTimeout(pendTimer); wipeData(""); } catch (e) {}   // 끄기 스위치: 잠가 둔 메뉴 자료도 지움
     try {
       var box = document.createElement("div");
       box.textContent = MOVED_TEXT;
@@ -252,12 +279,14 @@
     var body = { v: 1, b: BUILD, k: "call", t: c.token, fn: c.fn, a: c.a };
     if (c.u.length) body.u = c.u;
     if (JSON.stringify(body).length > BODY_MAX) { invoke(c.fail, scriptError(TOO_BIG), c.uo); return; }
-    post(body, c.write ? 0 : READ_MS, false).then(function (text) {
+    var t0 = Date.now();
+    post(body, c.write ? 0 : has(LONG_READS, c.fn) ? LONG_READ_MS : READ_MS, false).then(function (text) {
       var r = classify(text, 1, c.fn === "getOsBootJson");
       if (r.kind === "moved") { if (c.write) movedWrite(c); return; }
       if (r.kind === "bad") { invoke(c.fail, scriptError(NOT_ALLOWED), c.uo); return; }
       if (r.kind !== "ok") { retryOrFail(c, again); return; }
       deliver(c, r.items[0]);
+      svLater(r.sv, t0, c.write);
     }, function (e) { retryOrFail(c, again, e); });
   }
   function retryOrFail(c, again, err) {
@@ -268,6 +297,7 @@
     stat.batches++;
     var body = { v: 1, b: BUILD, k: "batch", t: list[0].token, c: list.map(entry) };
     if (JSON.stringify(body).length > BATCH_BODY_MAX) { list.forEach(function (c) { sendOne(c); }); return; }
+    var t0 = Date.now();
     post(body, READ_MS + READ_EXTRA_MS * (list.length - 1), false).then(function (text) {
       var early = list.some(function (c) { return c.fn === "getOsBootJson"; });
       var r = classify(text, list.length, early);
@@ -275,32 +305,70 @@
       if (r.kind === "bad") { list.forEach(function (c) { invoke(c.fail, scriptError(NOT_ALLOWED), c.uo); }); return; }
       if (r.kind !== "ok") { list.forEach(function (c) { retryOrFail(c, false); }); return; }
       list.forEach(function (c, i) { deliver(c, r.items[i]); });
+      svLater(r.sv, t0);
     }, function (e) { list.forEach(function (c) { retryOrFail(c, false, e); }); });
   }
-  function flush() {
-    qTimer = 0;
-    var list = q; q = [];
-    var byTok = {}, order = [];
+
+  /* ---------- 차례 (속도 3차): 화면 읽기(hi) 먼저 · 뒤에서 하는 일(lo)은 빈자리가 둘 이상일 때만 ----------
+     같은 틱에 부른 화면 읽기는 한 번에 모음 (pumpSoon = setTimeout 0) · 빈자리는 답(성공 · 실패)이 처리기에 가면 풀림 (다시 보내는 동안은 그대로) */
+  function hold(list, low) {
+    var left = list.length;
+    if (low) busyLo++; else busyHi++;
+    if (busyHi + busyLo > stat.maxBusy) stat.maxBusy = busyHi + busyLo;
+    var free = function () {
+      if (--left > 0) return;
+      if (low) busyLo--; else { busyHi--; hiAt = Date.now(); }
+      pumpSoon();
+    };
     list.forEach(function (c) {
-      if (!TOKEN_RE.test(c.token) || has(NO_BATCH, c.fn)) { sendOne(c); return; }
-      if (!byTok[c.token]) { byTok[c.token] = []; order.push(c.token); }
-      byTok[c.token].push(c);
-    });
-    order.forEach(function (t) {
-      var group = byTok[t];
-      for (var i = 0; i < group.length; i += BATCH_MAX) {
-        var part = group.slice(i, i + BATCH_MAX);
-        if (part.length === 1) sendOne(part[0]); else sendBatch(part);
-      }
+      var ok = c.ok, no = c.fail, open = true;
+      var end = function () { if (open) { open = false; free(); } };
+      c.ok = function (v, uo) { end(); if (typeof ok === "function") ok(v, uo); };
+      c.fail = function (v, uo) { end(); if (typeof no === "function") no(v, uo); };
     });
   }
-  function enqueueRead(c) {
-    q.push(c);
-    if (!qTimer) qTimer = setTimeout(flush, 0);
+  function pumpSoon() { if (!pumpTimer && !moving) pumpTimer = setTimeout(pump, 0); }
+  function pump() {
+    pumpTimer = 0;
+    if (moving) return;
+    while (hi.length && busyHi + busyLo < CAP) takeHi();
+    while (!hi.length && lo.length && busyLo < LOW_CAP && busyHi + busyLo < CAP - 1) {
+      var c = lo.shift();
+      stat.low++;
+      hold([c], true);
+      sendOne(c);
+    }
+  }
+  /** 화면 읽기 하나 (같은 토큰의 묶을 수 있는 읽기는 BATCH_MAX 개까지 같이 — 큰 읽기 · 쓰기는 혼자) */
+  function takeHi() {
+    var c = hi.shift();
+    if (c.write || !TOKEN_RE.test(c.token) || has(NO_BATCH, c.fn)) { hold([c], false); sendOne(c); return; }
+    var part = [c];
+    for (var i = 0; i < hi.length && part.length < BATCH_MAX;) {
+      var x = hi[i];
+      if (!x.write && x.token === c.token && !has(NO_BATCH, x.fn)) { part.push(x); hi.splice(i, 1); } else i++;
+    }
+    hold(part, false);
+    if (part.length === 1) sendOne(c); else sendBatch(part);
+  }
+  function enqueue(c) {
+    if (has(LOW, c.fn)) lo.push(c); else hi.push(c);
+    pumpSoon();
+  }
+  /** 화면이 뒤에서 받는 중인 것을 기다림 (Main_View amuseMenuWant) → 아직 보내지 않은 그 이름을 화면 차례로 */
+  function promote(fn) {
+    var n = 0;
+    for (var i = 0; i < lo.length;) {
+      if (lo[i].fn === fn) { hi.push(lo.splice(i, 1)[0]); n++; } else i++;
+    }
+    if (n) { stat.promoted += n; pumpSoon(); }
+    return n;
   }
   function write(c) {
     stat.writes++;
     trackWrite(c);
+    if (has(LOW, c.fn)) { enqueue(c); return; }   // 뒤에서 하는 일 (데우기 · 상세 묶음 — 읽기 목록 밖이라 쓰기처럼 보냄)
+    hold([c], false);
     sendOne(c);
   }
   function login(c) {
@@ -308,6 +376,7 @@
     loginBusy = [c];
     var body = { v: 1, b: BUILD, k: "login", id: String(c.args[0] === undefined ? "" : c.args[0]), pw: String(c.args[1] === undefined ? "" : c.args[1]), keep: c.args[4] === true };
     var done = function (fn) { var l = loginBusy || []; loginBusy = null; l.forEach(fn); };
+    var t0 = Date.now();
     post(body, LOGIN_MS, false).then(function (text) {
       var r = classify(text, 1, true);
       if (r.kind === "moved") { loginBusy = null; return; }
@@ -315,6 +384,7 @@
       if (r.kind !== "ok") { done(function (x) { invoke(x.fail, netError(true), x.uo); }); return; }
       var first = r.items[0];
       done(function (x) { deliver(x, first); });
+      svLater(r.sv, t0);
     }, function () { done(function (x) { invoke(x.fail, netError(true), x.uo); }); });
   }
   function simple(c, k, extra) {
@@ -553,35 +623,59 @@
   }
   var pend = {}, pendTimer = 0;
   function persistable(key, scopes) {
-    if (!cur.keep || !TOKEN_RE.test(cur.token) || !subtle || PERSIST_SKIP.test(key)) return false;
+    if (moving || !cur.keep || !TOKEN_RE.test(cur.token) || !subtle) return false;   // 끄기 스위치 뒤에는 다시 두지 않음 (지운 뒤 되살아나지 않게)
+    if (PERSIST_ALWAYS.test(key)) return true;   // 메뉴 자료 · 학생 상세 묶음: 범위 없는 메뉴(상담 · 회원 · 공지)도 (화면이 늘 뒤에서 확인)
+    if (PERSIST_SKIP.test(key)) return false;
     if (!Array.isArray(scopes) || !scopes.length) return false;
     for (var i = 0; i < scopes.length; i++) if (typeof scopes[i] !== "string" || scopes[i].charAt(0) === "~") return false;
     return true;
   }
   function persistLater(key, value, info) {
-    if (!info || !info.stamp || !persistable(key, info.scopes)) return;
-    pend[key] = { v: value, s: info.scopes, st: info.stamp };
+    if (!info || !persistable(key, info.scopes)) return;
+    if (!info.stamp && !PERSIST_ALWAYS.test(key)) return;
+    pend[key] = { v: value, s: info.scopes, st: info.stamp || "", m: plain(info.meta) ? info.meta : null, b: BUILD };
     clearTimeout(pendTimer);
     pendTimer = setTimeout(persistNow, 1500);
   }
   function persistNow() {
     var token = cur.token, list = pend;
     pend = {};
-    if (!TOKEN_RE.test(token) || !cur.keep) return;
+    if (moving || !TOKEN_RE.test(token) || !cur.keep) return;
     dataKey(token).then(function (key) {
       return Promise.all(Object.keys(list).map(function (k) {
         var text;
         try { text = JSON.stringify(list[k]); } catch (e) { return null; }
-        if (!text || text.length > PERSIST_MAX) return null;
+        if (!text || text.length > (k === "pack:details" ? PACK_MAX : PERSIST_MAX)) return null;
         var iv = new Uint8Array(12);
         window.crypto.getRandomValues(iv);
-        return subtle.encrypt({ name: "AES-GCM", iv: iv }, key, utf8(text)).then(function (c) { return { k: k, val: { tk: tokTag(token), iv: iv, c: c, at: Date.now() } }; });
+        return subtle.encrypt({ name: "AES-GCM", iv: iv }, key, utf8(text)).then(function (c) { return { k: k, val: { tk: tokTag(token), iv: iv, c: c, at: Date.now(), n: text.length } }; });
       }));
     }).then(function (rows) {
       rows = (rows || []).filter(Boolean);
-      if (!rows.length || cur.token !== token) return;
-      return idbDo("readwrite", function (st) { rows.forEach(function (r) { st.put(r.val, r.k); stat.persisted++; }); });
+      if (!rows.length || cur.token !== token || moving) return;
+      return idbDo("readwrite", function (st) { rows.forEach(function (r) { st.put(r.val, r.k); stat.persisted++; }); }).then(evict);
     }).catch(function () {});
+  }
+  /** 크기 한도: 모두 TOTAL_MAX 글자 · COUNT_MAX 칸 — 넘으면 가장 오래전에 쓴 것부터 지움 (최근에 쓴 것 먼저 남김) */
+  function evict() {
+    return idbDo("readwrite", function (st) {
+      var req = st.openCursor(), rows = [];
+      req.onsuccess = function () {
+        var cu = req.result;
+        if (cu) {
+          var v = cu.value || {};
+          rows.push({ k: cu.key, at: Number(v.at) || 0, n: Number(v.n) || (v.c && v.c.byteLength) || 0 });
+          cu.continue();
+          return;
+        }
+        rows.sort(function (a, b) { return b.at - a.at; });
+        var total = 0;
+        rows.forEach(function (r, i) {
+          total += r.n;
+          if (total > TOTAL_MAX || i >= COUNT_MAX) { try { st.delete(r.k); stat.evicted = (stat.evicted || 0) + 1; } catch (e) {} }
+        });
+      };
+    });
   }
   function dropPersist(prefix) {
     if (!subtle) return;
@@ -602,11 +696,18 @@
     });
     return ok ? m : null;
   }
-  function restore(F, put0) {
-    var token = cur.token;
-    if (!cur.keep || !TOKEN_RE.test(token) || !subtle) return;
+  /* 되살리기: 게이트가 열 때의 로그인을 알려 주자마자 읽고 풀어 둠 (readRows) → 화면 틀(amuseFresh)이 생기면 넣음 (hookFresh)
+     AmuseOP.restored: 넣기가 끝나면 (또는 되살릴 것이 없으면) 풀리는 Promise — Main_View 미리 받기가 기다림 (지문을 보내려고) */
+  var rowsP = null, rowsTk = "";
+  var restoredDone = null;
+  var restoredP = typeof Promise === "function" ? new Promise(function (res) { restoredDone = res; }) : null;
+  function restoredEnd() { if (restoredDone) { var f = restoredDone; restoredDone = null; f(stat.restored); } }
+  function readRows(token) {
+    if (rowsP && rowsTk === token) return rowsP;
+    rowsTk = token;
+    if (!cur.keep || !TOKEN_RE.test(token) || !subtle) { rowsP = Promise.resolve([]); return rowsP; }
     // getAll + getAllKeys 를 한 거래에서 (결과를 짝지어 씀)
-    idb().then(function (db) {
+    rowsP = idb().then(function (db) {
       return new Promise(function (resolve) {
         try {
           var tx = db.transaction(IDB_STORE, "readonly"), st = tx.objectStore(IDB_STORE);
@@ -616,29 +717,45 @@
         } catch (e) { try { db.close(); } catch (x) {} resolve(null); }
       });
     }).then(function (got) {
-      if (!got || cur.token !== token) return;
+      if (!got || cur.token !== token) return [];
       return dataKey(token).then(function (key) {
         return Promise.all(got.vals.map(function (val, i) {
           if (!val || val.tk !== tokTag(token)) return null;
           return subtle.decrypt({ name: "AES-GCM", iv: val.iv }, key, val.c).then(function (buf) {
-            var o = JSON.parse(new TextDecoder().decode(buf));
-            return { k: String(got.keys[i]), o: o };
+            return { k: String(got.keys[i]), o: JSON.parse(new TextDecoder().decode(buf)) };
           }, function () { return null; });
         }));
-      }).then(function (rows) {
-        if (cur.token !== token) return;
-        (rows || []).forEach(function (r) {
-          if (!r || !plain(r.o) || !Array.isArray(r.o.s)) return;
-          var at = mapOfStamp(r.o.st);
-          if (!at) return;
-          try {
-            if (typeof F.info === "function" ? F.info(r.k) : F.get(r.k) !== undefined) return;   // 이미 새로 받은 것은 그대로
-            put0.call(F, r.k, r.o.v, r.o.s, at);
-            stat.restored++;
-          } catch (e) {}
-        });
       });
-    }).catch(function () {});
+    }).then(function (rows) { return (rows || []).filter(Boolean); }).catch(function () { return []; });
+    return rowsP;
+  }
+  function restore(F, put0) {
+    var token = cur.token;
+    if (!cur.keep || !TOKEN_RE.test(token) || !subtle) { restoredEnd(); return; }
+    readRows(token).then(function (rows) {
+      if (cur.token !== token) return;
+      // 학생 상세 묶음은 맨 뒤 (작은 메뉴가 먼저 들어가게)
+      rows.sort(function (a, b) { return (a.k === "pack:details" ? 1 : 0) - (b.k === "pack:details" ? 1 : 0); });
+      rows.forEach(function (r) {
+        if (!r || !plain(r.o) || !Array.isArray(r.o.s)) return;
+        var always = PERSIST_ALWAYS.test(r.k);
+        var at = mapOfStamp(r.o.st);
+        if (!at && !always) return;
+        var meta = {};
+        if (plain(r.o.m)) Object.keys(r.o.m).forEach(function (x) { meta[x] = r.o.m[x]; });
+        if (r.o.b !== BUILD || !at) meta.stale = 1;   // 다른 판이 둔 것 · 도장 없음: 보여 주기만 (최신 아님)
+        try {
+          if (typeof F.restore === "function") {
+            if (F.restore(r.k, r.o.v, r.o.s, at || {}, meta)) stat.restored++;
+            return;
+          }
+          if (!at || meta.stale) return;
+          if (typeof F.info === "function" ? F.info(r.k) : F.get(r.k) !== undefined) return;   // 이미 새로 받은 것은 그대로
+          put0.call(F, r.k, r.o.v, r.o.s, at);
+          stat.restored++;
+        } catch (e) {}
+      });
+    }).then(restoredEnd, restoredEnd);
   }
   function hookFresh() {
     var F = window.amuseFresh;
@@ -670,10 +787,12 @@
       wipeData(kt ? tokTag(kt) : "");
       if (!kt) lsDel(RECENT);
       pend = {};
+      rowsP = null; rowsTk = "";
       return;
     }
     if (was && was !== token) wipeData(cur.keep ? tokTag(token) : "");
-    if (!cur.keep) wipeData("");   // 유지하지 않는 로그인은 PC 에 남기지 않음
+    if (!cur.keep) { wipeData(""); return; }   // 유지하지 않는 로그인은 PC 에 남기지 않음
+    if (!was && !moving) { try { readRows(token); } catch (e) {} }   // 열 때의 유지 로그인: 화면 틀보다 먼저 읽기 시작
   }
 
   /* ---------- google.script.run 모양 (게이트가 real 로 씀) ---------- */
@@ -687,7 +806,7 @@
       c.a = Array.isArray(pl.a) ? pl.a : [];
       c.u = Array.isArray(pl.u) ? pl.u : [];
       if (has(LOCAL_PAGES, c.fn)) { localPages(c); return; }
-      if (has(READS, c.fn)) { enqueueRead(c); return; }
+      if (has(READS, c.fn)) { enqueue(c); return; }
       c.write = true;
       write(c);
       return;
@@ -721,7 +840,13 @@
 
   /* ---------- 화면 틀이 읽는 값 (서버 doGet 이 넣던 자리 · 개인정보 없음) ---------- */
   window.AmuseOP = {
-    stat: stat, exec: EXEC, build: BUILD,
+    stat: stat, exec: EXEC, build: BUILD, restored: restoredP,
+    /** 화면이 기다리는 뒤 일 → 화면 차례로 (아직 보내지 않은 것만) · 보낸 수 */
+    promote: function (fn) { return typeof fn === "string" ? promote(fn) : 0; },
+    /** 화면 읽기가 없고 (기다림 · 가는 중) 마지막 화면 답 뒤 ms 가 지났으면 true (뒤 일을 미룰 때) */
+    quiet: function (ms) { return !hi.length && busyHi === 0 && Date.now() - hiAt >= (Number(ms) || 0); },
+    /** 지금 차례 (확인용) */
+    queue: function () { return { hi: hi.length, lo: lo.length, busyHi: busyHi, busyLo: busyLo }; },
     /** 데이터 버전 (마지막 로그인 · 첫 데이터 답에 함께 온 값 — 첫 20초 확인이 새 버전이면 지금 화면을 조용히 다시 받음) */
     version: function () { try { var v = JSON.parse(lsGet(VER) || "null"); return typeof v === "string" ? v : null; } catch (e) { return null; } },
     /** 과목 목록 칸 (#amuseBootSubjects) 을 마지막으로 받은 목록으로 */
@@ -776,7 +901,7 @@
     } catch (e) {}
   }
 })();</script>
-<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 7310706d95eec5dfeb83f760a4801e11 · OS_Pages_Min.html md5 f4c84b43289e2a491c2d48c1ae94a278) — 손으로 고치지 말 것 --><!--ossrc:56afbb2fed56e70bf32b6e7ffdb9dd8d:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:8ccea51525d97585708395ac9d880e32-->
+<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 4326488628c643974621de8e49ea7b7e · OS_Pages_Min.html md5 5e29e8f6cb1ce0f35c3dba15d1ef979a) — 손으로 고치지 말 것 --><!--ossrc:ab08265dba5eda038c4a33387a7869b0:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:5b836040ae3a06e1e64c209a0b788271-->
 <base target="_top">
 <style>html.osw-gate body{visibility: hidden !important;}#oswGateBlock{visibility: visible !important;position: fixed;inset: 0;z-index: 2147483647;display: flex;flex-direction: column;align-items: center;justify-content: center;gap: 16px;padding: 24px;box-sizing: border-box;text-align: center;background: var(--black, #111111);color: var(--ink-4, #b9bcc2);font: 15px/1.6 "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", "Malgun Gothic", sans-serif;word-break: keep-all;overflow-wrap: anywhere;}#oswGateBlock b{color: #ffffff;font-size: 17px;}#oswGateBlock p{margin: 0;}#oswGateBlock a{display: inline-flex;align-items: center;height: 46px;padding: 0 20px;border-radius: 4px;background: var(--orange, #e95a1a);color: #ffffff;font-weight: 700;text-decoration: none;}.osw-login{position: fixed;inset: 0;z-index: 2147483000;display: flex;align-items: center;justify-content: center;padding: 24px;background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), var(--amuse-black, #111111);color: var(--amuse-white, #ffffff);font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;}.osw-login[hidden]{display: none;}.osw-box{width: 100%;max-width: 340px;}.osw-logo{display: flex;flex-direction: column;align-items: center;}.osw-logo img{display: block;width: 230px;height: auto;}.osw-cap{margin: 20px 0 36px;color: var(--ink-3, #8f949c);font-size: 13px;font-weight: 600;text-align: center;}.osw-help{margin-top: 18px;color: var(--ink-3, #8f949c);font-size: 12px;text-align: center;}@media (max-height: 560px){.osw-logo img{width: 168px;}.osw-cap{margin: 10px 0 18px;}}.osw-field{display: block;margin-bottom: 14px;}.osw-field span{display: block;margin-bottom: 7px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 700;}.osw-field input{box-sizing: border-box;width: 100%;height: 48px;padding: 0 13px;border: 1px solid var(--black-line, #2e2e2e);border-radius: var(--r, 4px);background: var(--black-2, #1c1c1c);color: var(--amuse-white, #ffffff);font: inherit;font-size: 16px;}.osw-field input:focus{border-color: var(--amuse-primary, #e95a1a);outline: none;}.osw-keep{display: flex;align-items: center;gap: 8px;margin: 2px 0 12px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 600;cursor: pointer;user-select: none;}.osw-keep input{flex: none;width: 18px;height: 18px;margin: 0;accent-color: var(--amuse-primary, #e95a1a);cursor: pointer;}html.osw-cso .osw-keep{display: none;}.osw-err{min-height: 18px;margin: 0 0 10px;color: var(--danger, #d93025);font-size: 13px;}.osw-btn{width: 100%;height: 50px;padding: 0 18px;border: 0;border-radius: var(--r, 4px);background: var(--amuse-primary, #e95a1a);color: var(--amuse-white, #ffffff);font: inherit;font-size: 15px;font-weight: 700;cursor: pointer;}.osw-btn:hover{background: var(--amuse-primary-hover, #d24e12);}.osw-btn:disabled{opacity: .6;cursor: default;}a.osw-btn{display: flex;align-items: center;justify-content: center;text-decoration: none;}.osw-login.osw-re{z-index: 2147483002;}.osw-re-cancel{display: block;width: 100%;margin-top: 10px;padding: 10px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: 14px;cursor: pointer;}.osw-re-cancel:hover{color: var(--amuse-white, #ffffff);}.osw-intro{position: fixed;inset: 0;z-index: 2147483001;display: flex;align-items: center;justify-content: center;background: #000000;transition: background-color .7s ease, opacity .5s ease;}.osw-intro video{width: 100%;height: 100%;object-fit: cover;filter: url(#oswTint);transition: opacity .25s ease;}@media (min-width: 768px) and (hover: hover){.osw-intro video{width: min(40vw, 420px);}}.osw-intro.intro-fade video{opacity: 0;}.osw-intro.intro-out{background-color: rgba(0, 0, 0, 0);pointer-events: none;}.osw-intro-logo{pointer-events: none;}.osw-login.intro-wait #oswCap, .osw-login.intro-wait #oswForm, .osw-login.intro-wait .osw-help{opacity: 0;}.osw-login.intro-done #oswCap, .osw-login.intro-done #oswForm, .osw-login.intro-done .osw-help{animation: oswRise .5s ease both;}.osw-login.intro-done #oswForm{animation-delay: .12s;}.osw-login.intro-done .osw-help{animation-delay: .2s;}@keyframes oswRise{from{opacity: 0;transform: translateY(10px);}to{opacity: 1;transform: none;}}html.osw-cso .osw-login{background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), #111111;color: #ffffff;}html.osw-cso .osw-box{max-width: 340px;}html.osw-cso .osw-cap{margin: 20px 0 36px;color: #8f949c;}html.osw-cso .osw-help{color: #8f949c;}html.osw-cso .osw-field span{color: #cfcfcf;}html.osw-cso .osw-field input{border-color: #2e2e2e;background: #1c1c1c;color: #ffffff;}html.osw-cso .osw-field input:focus{border-color: #cfcfcf;box-shadow: none;}html.osw-cso .osw-err{color: #ff7b6b;}html.osw-cso .osw-btn{background: #e95a1a;color: #ffffff;}html.osw-cso .osw-btn:hover{background: #d24e12;}html.osw-cso .osw-btn:disabled{opacity: .45;}@media (min-width: 768px){html.osw-cso .osw-intro video{width: 475px;height: min(100%, 844px);}}.osw-acct{position: relative;display: flex;align-items: center;justify-content: space-between;gap: 8px;margin: 0 0 12px;padding: 0 2px;color: var(--ink-3, #8f949c);font-size: 12px;}.osw-acct-name{min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}.osw-link{flex-shrink: 0;padding: 4px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;cursor: pointer;}.osw-link:hover{color: var(--amuse-primary, #e95a1a);}.osw-menu{position: absolute;right: 0;bottom: 100%;z-index: 10;display: flex;flex-direction: column;min-width: 150px;margin-bottom: 6px;padding: 6px;border: 1px solid var(--black-line, #2e2e2e);border-radius: 4px;background: var(--black-2, #1c1c1c);}.osw-menu[hidden]{display: none;}.osw-menu button{padding: 9px 10px;border: 0;border-radius: var(--r, 4px);background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: var(--amuse-font-13, 13px);text-align: left;cursor: pointer;}.osw-menu button:hover{background: rgba(255, 255, 255, .08);color: var(--on-black, #ffffff);}</style>
 <div id="oswLogin" class="osw-login" hidden>
@@ -1712,6 +1837,35 @@ function wrote(prop) {
 if (READ_RE.test(prop)) return;
 try { if (window.amuseFresh && typeof window.amuseFresh.wrote === "function") window.amuseFresh.wrote(); } catch (e) {}
 }
+var PASS = !!window.amuseOsTransport;
+var BG_RE = /^(getOsMenusJson|getWorkspaceStudentDetailsJson|warmServerCaches|getWarmupJson|getDataVersionJson)$/;
+var BG_HOLD_MS = 15000;
+var fg = 0, bgWait = [];
+function bgRun(item) {
+if (item.done) return;
+item.done = true;
+clearTimeout(item.timer);
+item.go();
+}
+function bgDrain() {
+if (fg > 0) return;
+var list = bgWait;
+bgWait = [];
+list.forEach(bgRun);
+}
+window.amuseRpcPromote = function(name) {
+if (PASS) {
+try { return window.AmuseOP && typeof window.AmuseOP.promote === "function" ? window.AmuseOP.promote(name) : 0; } catch (e) { return 0; }
+}
+var n = 0;
+bgWait = bgWait.filter(function(item) {
+if (item.name !== name) return true;
+n++;
+setTimeout(function() { bgRun(item); }, 0);
+return false;
+});
+return n;
+};
 function wrap(ok, fail, user, hasUser) {
 var base = {
 withSuccessHandler: function(f) { return wrap(f, fail, user, hasUser); },
@@ -1725,22 +1879,53 @@ if (has.call(target, prop)) return target[prop];
 var fn = src[prop];
 if (typeof fn !== "function") return fn;
 return function() {
+var args = arguments;
+var counted = false;
+var finish = function() {
+if (!counted) return;
+counted = false;
+fg = Math.max(0, fg - 1);
+if (!fg && bgWait.length) setTimeout(bgDrain, 0);
+};
+var go = function() {
 var t0 = now();
 wrote(prop);
 var r = src
 .withSuccessHandler(function(value, u) {
+finish();
 record(prop, now() - t0, { ok: 1, b: typeof value === "string" ? value.length : 0 });
 wrote(prop);
 if (ok) return ok(value, u);
 })
 .withFailureHandler(function(err, u) {
+finish();
 record(prop, now() - t0, { ok: 0 });
 wrote(prop);
 if (fail) return fail(err, u);
 if (window.console) console.warn("서버 오류", prop, err);
 });
 if (hasUser) r = r.withUserObject(user);
-return r[prop].apply(r, arguments);
+try {
+return r[prop].apply(r, args);
+} catch (e) {
+finish();
+throw e;
+}
+};
+if (!PASS && BG_RE.test(prop)) {
+if (fg > 0) {
+var item = { name: prop, go: go, done: false };
+item.timer = setTimeout(function() { bgRun(item); }, BG_HOLD_MS);
+bgWait.push(item);
+return;
+}
+return go();
+}
+if (!PASS) {
+counted = true;
+fg++;
+}
+return go();
 };
 }
 });
@@ -3537,7 +3722,7 @@ oldScript.remove();
 var pageHtmlCache = {};
 var pagePrefetchStarted = false;
 try {
-var bootPageHtml = "\u003cstyle>.db-page{--card: var(--surface);--orange-2: var(--orange-soft);--ok-2: var(--ok-soft);--red: var(--danger);--red-2: var(--danger-soft);--duo: #4b5bd6;--duo-2: #eef0fd;--grp: #8a3fc4;--grp-2: #f5edfb;width: 100%;box-sizing: border-box;padding: 28px 30px;background: var(--bg);color: var(--ink);font-family: var(--font);-webkit-font-smoothing: antialiased;min-height: 100%;}.db-page *, .db-page *::before, .db-page *::after{box-sizing: border-box;}.db-num{font-variant-numeric: tabular-nums;letter-spacing: -.02em;}.db-head{display: flex;justify-content: space-between;align-items: flex-end;gap: 20px;margin-bottom: 20px;}.db-hello{font-size: 14px;color: var(--ink-2);font-weight: 600;}.db-name{margin: 4px 0 6px;font-size: var(--amuse-fs-page, 26px);font-weight: 800;letter-spacing: -0.8px;}.db-date{font-size: 13px;color: var(--ink-3);}.db-date b{color: var(--ink);font-weight: 700;}.db-actions{display: flex;gap: 6px;}.db-btn{height: 38px;padding: 0 14px;border-radius: var(--r);border: 1px solid var(--line);background: var(--surface);font: inherit;font-size: 14px;font-weight: 700;color: var(--ink);display: inline-flex;align-items: center;gap: 6px;cursor: pointer;}.db-btn:hover{background: var(--surface-2);}.db-btn.primary{background: var(--orange);border-color: var(--orange);color: #fff;}.db-btn.primary:hover{background: var(--orange-hover);}.db-btn i{font-style: normal;font-size: 15px;opacity: .6;}.db-row1{display: grid;grid-template-columns: 470px minmax(0, 1fr);gap: 14px;margin-bottom: 14px;}.db-today{background: var(--black);color: #fff;border-radius: var(--r);padding: 22px 24px;display: grid;grid-template-columns: 128px 1fr;gap: 22px;align-items: center;position: relative;overflow: hidden;cursor: pointer;}.db-today::after{content: \"\";position: absolute;right: -60px;top: -60px;width: 220px;height: 220px;background: radial-gradient(circle, rgba(233, 90, 26, .28), transparent 65%);pointer-events: none;}.db-today .lab{font-size: 13px;color: var(--on-black-2);font-weight: 600;}.db-ring{position: relative;width: 128px;height: 128px;}.db-ring svg{transform: rotate(-90deg);display: block;}.db-ring .c{position: absolute;inset: 0;display: grid;place-items: center;text-align: center;}.db-ring .c b{display: block;font-size: 30px;font-weight: 800;}.db-ring .c small{font-size: 12px;color: var(--on-black-2);}.db-tstats{display: grid;grid-template-columns: repeat(3, 1fr);gap: 8px;margin: 10px 0 16px;position: relative;z-index: 1;}.db-tstats div{border-left: 2px solid var(--black-2);padding-left: 10px;}.db-tstats b{display: block;font-size: 22px;font-weight: 800;}.db-tstats span{font-size: 12px;color: var(--on-black-2);}.db-next{position: relative;z-index: 1;display: flex;align-items: center;gap: 10px;background: var(--black);border: 1px solid var(--black-2);border-radius: var(--r);padding: 10px 12px;font-size: 13px;white-space: nowrap;overflow: hidden;}.db-next em{font-style: normal;color: var(--orange);font-weight: 800;}.db-next span{color: var(--on-black-2);overflow: hidden;text-overflow: ellipsis;}.db-kpis{display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 14px;}.db-kpi{background: var(--card);border: 1px solid var(--card-line);border-radius: var(--r);box-shadow: var(--card-shadow);padding: 18px 18px 14px;display: flex;flex-direction: column;justify-content: space-between;min-height: 172px;cursor: pointer;text-align: left;font: inherit;color: inherit;transition: border-color .15s ease, box-shadow .15s ease;}.db-kpi:hover{border-color: var(--line-strong);box-shadow: var(--card-shadow), 0 2px 10px rgba(0, 0, 0, .04);}.db-kpi .lab{font-size: 12px;color: var(--ink-3);font-weight: 700;}.db-kpi .val{margin-top: 10px;font-size: 30px;font-weight: 800;}.db-kpi .val small{font-size: 14px;font-weight: 700;color: var(--ink-3);margin-left: 2px;}.db-kpi .sub{margin-top: 4px;font-size: 13px;color: var(--ink-2);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-up{color: var(--ok-ink);font-weight: 700;}.db-down{color: var(--red);font-weight: 700;}.db-spark{margin-top: 12px;width: 100%;height: 34px;display: block;overflow: visible;}.db-chips{display: flex;flex-wrap: wrap;gap: 6px;margin-top: 12px;}.db-chips span{font-size: 12px;font-weight: 700;padding: 4px 8px;border-radius: var(--r-chip);background: var(--line-2);color: var(--ink-2);}.db-chips span.g{background: var(--ok-2);color: var(--ok-ink);}.db-chips span.r{background: var(--red-2);color: var(--danger-ink);}.db-meter{margin-top: 14px;height: 6px;background: var(--line-2);border-radius: var(--r);overflow: hidden;}.db-meter i{display: block;height: 100%;background: var(--ink);}.db-row2{display: grid;grid-template-columns: minmax(0, 1fr) 380px;gap: 14px;align-items: start;}.db-side{display: grid;gap: 14px;align-content: start;min-width: 0;}.db-card{background: var(--card);border: 1px solid var(--card-line);border-radius: var(--r);box-shadow: var(--card-shadow);overflow: hidden;min-width: 0;}.db-card-h{display: flex;justify-content: space-between;align-items: center;gap: 10px;padding: 16px 20px 12px;}.db-card-h h2{margin: 0;font-size: 15px;font-weight: 800;}.db-card-h h2 span{margin-left: 6px;color: var(--ink-3);font-weight: 600;font-size: 13px;}.db-link{border: 0;background: none;padding: 0;font: inherit;font-size: 13px;color: var(--ink-2);font-weight: 700;cursor: pointer;}.db-link:hover{color: var(--ink);}.db-empty{padding: 34px 16px;text-align: center;color: var(--ink-3);font-size: 13px;}.db-empty b{display: block;color: var(--ink-2);font-size: 14px;margin-bottom: 4px;}.db-skel{height: 96px;margin: 8px 20px 18px;border-radius: var(--r);background: linear-gradient(90deg, var(--line-2), var(--surface-2), var(--line-2));background-size: 200% 100%;animation: dbShimmer 1.2s infinite;}@keyframes dbShimmer{to{background-position: -200% 0;}}.db-tl{padding: 4px 20px 14px;}.db-tl-hours, .db-tl-row{display: grid;grid-template-columns: 116px minmax(0, 1fr);}.db-tl-hours .scale{position: relative;height: 22px;}.db-tl-hours .scale span{position: absolute;transform: translateX(-50%);font-size: 11px;color: var(--ink-3);}.db-tl-row{border-top: 1px solid var(--line-2);align-items: center;cursor: pointer;}.db-tl-row:hover .db-tl-who b{color: var(--orange-ink);}.db-tl-who b{display: block;font-size: 14px;}.db-tl-who small{font-size: 12px;color: var(--ink-3);}.db-tl-who .pg{display: flex;margin-top: 5px;height: 4px;width: 92px;background: var(--line-2);border-radius: var(--r);overflow: hidden;}.db-tl-who .pg i{display: block;flex: none;height: 100%;}.db-tl-who .pg i.d{background: var(--st-done, #1f8f5c);}.db-tl-who .pg i.a{background: var(--st-absent, #8f949c);}.db-lane{position: relative;height: 64px;}.db-lane .gl{position: absolute;top: 0;bottom: 0;width: 1px;background: var(--line-2);}.db-blk{position: absolute;height: 42px;border-radius: var(--r);padding: 5px 8px;font-size: 12px;font-weight: 700;line-height: 1.25;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;}.db-blk small{display: block;font-weight: 500;font-size: 11px;opacity: .8;}.db-blk.done{background: var(--st-done-soft, #eaf6ef);color: var(--st-done-ink, #17694a);box-shadow: inset 2px 0 0 var(--st-done, #1f8f5c);}.db-blk.done .nm::before{content: \"✓ \";}.db-blk.absent{background: var(--st-absent-soft, #f2f2ef);color: var(--st-absent-ink, #555a62);box-shadow: inset 2px 0 0 var(--st-absent, #8f949c);}.db-blk.absent .nm{text-decoration: line-through;text-decoration-thickness: 1.5px;}.db-blk.plan{background: var(--st-plan-soft, #fdf1ea);color: var(--st-plan-ink, #a63d0c);box-shadow: inset 2px 0 0 var(--st-plan, #e95a1a);}.db-blk.late{background: var(--st-late-soft, #fdecea);color: var(--st-late-ink, #b3261e);box-shadow: inset 2px 0 0 var(--st-late, #d93025);}.db-blk.done small, .db-blk.absent small, .db-blk.plan small, .db-blk.late small{opacity: 1;}.db-blk .tag, .db-blk .tag.duo, .db-blk .tag.grp, .db-blk .tag.prepaid, .db-blk .tag.trial{font-size: 10px;font-weight: 800;padding: 1px 0;border-radius: 0;background: transparent;color: inherit;margin-right: 4px;text-decoration: none;display: inline-block;}.db-now{position: absolute;top: 0;bottom: 0;width: 2px;margin-left: -1px;background: var(--orange);z-index: 1;pointer-events: none;}.db-now.first::before{content: attr(data-time);position: absolute;top: -20px;left: 50%;transform: translateX(-50%);font-size: 10px;font-weight: 800;color: #fff;background: var(--orange);padding: 1px 5px;border-radius: var(--r);}.db-legend{display: flex;gap: 14px;justify-content: flex-end;padding: 0 20px 16px;font-size: 12px;color: var(--ink-2);}.db-blk .tag.prepaid{padding: 0 3px;border-radius: var(--r-chip);box-shadow: inset 0 0 0 1px currentColor;opacity: .85;}.db-legend .db-lg-word{font-style: normal;color: var(--ink-2);}.db-legend i{display: inline-block;width: 9px;height: 9px;border-radius: var(--r);margin-right: 5px;vertical-align: -1px;}.db-legend .lg-st-done{background: var(--st-done-soft, #eaf6ef);box-shadow: inset 0 0 0 1px var(--st-done, #1f8f5c), inset 3px 0 0 var(--st-done, #1f8f5c);}.db-legend .lg-st-absent{background: var(--st-absent-soft, #f2f2ef);box-shadow: inset 0 0 0 1px var(--st-absent, #8f949c), inset 3px 0 0 var(--st-absent, #8f949c);}.db-legend .lg-st-plan{background: var(--st-plan-soft, #fdf1ea);box-shadow: inset 0 0 0 1px var(--st-plan, #e95a1a), inset 3px 0 0 var(--st-plan, #e95a1a);}.db-legend .lg-st-late{background: var(--st-late-soft, #fdecea);box-shadow: inset 0 0 0 1px var(--st-late, #d93025), inset 3px 0 0 var(--st-late, #d93025);}.db-filters{display: flex;flex-wrap: wrap;gap: 4px;padding: 0 20px 10px;}.db-filters button{border: 0;font: inherit;font-size: 12px;font-weight: 700;padding: 5px 9px;border-radius: var(--r);color: var(--ink-2);background: var(--line-2);cursor: pointer;}.db-filters button.on{background: var(--ink);color: #fff;}.db-al{display: grid;grid-template-columns: minmax(0, 1fr) auto;gap: 12px;align-items: center;padding: 12px 20px;border-top: 1px solid var(--line-2);}.db-al-main{min-width: 0;cursor: pointer;}.db-al b{font-size: 14px;}.db-al .tags{display: inline-flex;flex-wrap: wrap;gap: 3px;margin-left: 6px;vertical-align: 1px;}.db-al .tags span{font-size: 11px;font-weight: 800;padding: 2px 5px;border-radius: var(--r-chip);}.t-overdue{background: var(--red-2);color: var(--danger-ink);}.t-reregister{background: var(--orange-2);color: var(--st-plan-ink);}.t-mreq{background: var(--orange-2);color: var(--st-plan-ink);}.t-unscheduled{background: var(--info-soft);color: var(--info);}.t-noTeacher{background: var(--orange-2);color: var(--st-plan-ink);}.t-inactive{background: var(--warn-soft);color: var(--warn);}.t-unpaid{background: var(--line-2);color: var(--ink-2);}.db-al p{margin: 3px 0 0;font-size: 12px;color: var(--ink-3);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-go{width: 30px;height: 30px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);display: grid;place-items: center;color: var(--ink-2);font-size: 16px;cursor: pointer;padding: 0;}.db-go:hover{border-color: var(--line-strong);color: var(--ink);}.db-go.p{background: var(--orange);border-color: var(--orange);color: #fff;}.db-more{display: block;width: 100%;border: 0;border-top: 1px solid var(--line-2);background: var(--surface-2);height: 36px;font: inherit;font-size: 13px;font-weight: 700;color: var(--ink-2);cursor: pointer;}.db-allgood{padding: 22px 20px 26px;font-size: 13px;color: var(--ok-ink);font-weight: 700;border-top: 1px solid var(--line-2);}.db-act{padding: 2px 20px 14px;}.db-ac{display: grid;grid-template-columns: 14px minmax(0, 1fr) auto;gap: 10px;padding: 9px 0;position: relative;font-size: 13px;}.db-ac::before{content: \"\";position: absolute;left: 6px;top: 22px;bottom: -9px;width: 1px;background: var(--line);}.db-ac:last-child::before{display: none;}.db-dot{width: 13px;height: 13px;border-radius: 50%;border: 3px solid #fff;box-shadow: 0 0 0 1px var(--line);background: var(--ink-3);margin-top: 2px;}.db-dot.k{background: var(--ink);}.db-dot.g{background: var(--st-done, #1f8f5c);}.db-dot.b{background: var(--info);}.db-ac > div{min-width: 0;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-ac b{font-weight: 700;}.db-ac span{color: var(--ink-2);}.db-ac time{font-size: 12px;color: var(--ink-3);white-space: nowrap;}@media (max-width: 1200px){.db-row1, .db-row2{grid-template-columns: minmax(0, 1fr);}}.db-page{padding: var(--amuse-page-pad, 24px);}.db-head{margin-bottom: var(--amuse-head-gap, 16px);}.db-row1{gap: var(--amuse-gap, 12px);margin-bottom: var(--amuse-gap, 12px);}.db-kpis, .db-row2, .db-side{gap: var(--amuse-gap, 12px);}.db-today .lab{font-size: var(--amuse-fs-label, 12px);}.db-kpi .lab{font-size: var(--amuse-fs-label, 12px);}.db-kpi .sub{font-size: var(--amuse-fs-meta, 12px);}.db-kpi .val{overflow-wrap: normal;}.db-kpi .val small{display: inline-block;white-space: nowrap;}@media (min-width: 1201px) and (max-width: 1300px){.db-kpi{padding-left: 14px;padding-right: 14px;}.db-kpi .val{font-size: 24px;}.db-kpi .val small{font-size: var(--amuse-fs-body, 13px);}}.db-chips span{display: inline-flex;align-items: center;height: 20px;padding: 0 7px;font-size: var(--amuse-fs-chip, 11.5px);}.db-card-h h2 span{font-size: var(--amuse-fs-meta, 12px);}.db-legend{font-size: var(--amuse-fs-meta, 12px);}.db-al .tags span{display: inline-flex;align-items: center;height: var(--amuse-chip-height, 20px);padding: 0 6px;font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;}.db-ac time{font-size: var(--amuse-fs-meta, 12px);}.db-more{font-size: var(--amuse-fs-body, 13px);}.t-delayover{background: var(--red-2);color: var(--danger-ink);}.t-gapold{background: var(--surface-3);color: var(--ink-2);}.db-main{display: grid;gap: var(--amuse-gap, 12px);align-content: start;min-width: 0;}.db-filters button.nt{gap: 5px;}.db-filters button .db-nt-n{font-style: normal;display: inline-flex;align-items: center;justify-content: center;box-sizing: border-box;min-width: 18px;height: 18px;padding: 0 5px;border-radius: 9px;background: var(--orange);color: #fff;font-size: 11px;font-weight: 800;line-height: 1;font-variant-numeric: tabular-nums;}.db-filters button.on .db-nt-n{background: var(--surface);color: var(--ink);}.db-nt-bar{display: flex;align-items: center;justify-content: space-between;gap: 10px;padding: 2px 20px 10px;font-size: var(--amuse-fs-meta, 12px);color: var(--ink-3);}.db-nt-all{flex: none;height: 28px;padding: 0 10px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);font: inherit;font-size: 12px;font-weight: 700;color: var(--ink-2);cursor: pointer;white-space: nowrap;}.db-nt-all:hover{border-color: var(--ink);color: var(--ink);}.db-nt{display: grid;grid-template-columns: minmax(0, 1fr) auto;gap: 12px;align-items: start;padding: 12px 20px;border-top: 1px solid var(--line-2);}.db-nt.read{background: var(--surface-2);}.db-nt.read .db-nt-main{opacity: .62;}.db-nt-main{display: grid;gap: 5px;min-width: 0;}.db-nt-l1{display: flex;align-items: center;flex-wrap: wrap;gap: 4px 8px;min-width: 0;}.db-nt-l1 b{font-size: 14px;font-weight: 700;word-break: keep-all;overflow-wrap: anywhere;}.db-nt-kind{display: inline-flex;align-items: center;height: 20px;padding: 0 6px;border-radius: var(--r-chip);font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;background: var(--line-2);color: var(--ink-2);}.db-nt-kind.k-change{background: var(--orange-2);color: var(--orange-ink, #c94c12);}.db-nt-kind.k-academy{background: var(--surface-3);color: var(--ink-2);}.db-nt-kind.k-attendance{background: var(--ok-soft);color: var(--ok-ink);}.db-nt-wk{font-size: 12px;color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-nt-swap{display: flex;align-items: center;flex-wrap: wrap;gap: 6px;font-size: 13px;}.db-nt-arrow{color: var(--ink-3);}.db-nt-first{font-size: 12px;color: var(--ink-3);}.db-nt-att{font-size: 13px;color: var(--ink-2);}.db-rc{display: inline-flex;align-items: center;height: 20px;padding: 0 8px;border-radius: var(--r-chip);font-size: 11px;font-weight: 700;white-space: nowrap;}.db-rc.st{background: var(--orange-2);color: var(--orange-ink, #c94c12);}.db-rc.tc{background: var(--info-soft);color: var(--info);}.db-rc.ac{background: var(--surface-3);color: var(--ink-2);}.db-rc.open{background: var(--surface);color: var(--ink-3);box-shadow: inset 0 0 0 1px var(--line);}.db-rc.old{background: var(--line-2);color: var(--ink-3);text-decoration: line-through;text-decoration-color: rgba(143, 148, 156, .7);}.db-nt-why{margin: 0;padding-left: 10px;border-left: 2px solid var(--line);font-size: 13px;line-height: 1.5;color: var(--ink);word-break: keep-all;overflow-wrap: anywhere;}.db-nt-sub{margin: 0;font-size: 12px;color: var(--ink-3);}.db-nt-who{font-size: 12px;color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-nt-read{height: 30px;padding: 0 11px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);font: inherit;font-size: 13px;font-weight: 700;color: var(--ink);cursor: pointer;white-space: nowrap;}.db-nt-read:hover{border-color: var(--ink);}.db-nt-done{height: 30px;display: inline-flex;align-items: center;font-size: 12px;font-weight: 700;color: var(--ink-3);white-space: nowrap;}.db-more.db-nt-hr{color: var(--ink-3);font-weight: 600;text-align: right;padding: 0 20px;}.db-filters{gap: 6px;}.db-filters button{display: inline-flex;align-items: center;height: 28px;padding: 0 10px;border: 1px solid var(--line);background: var(--surface);color: var(--ink-2);font-size: var(--amuse-fs-filter, 12px);}.db-filters button:hover{background: var(--surface-2);}.db-filters button.on{border-color: var(--amuse-seg-active, #111);background: var(--amuse-seg-active, #111);color: #fff;}.db-filters button{flex: none;white-space: nowrap;}.db-al.db-al-a{align-items: start;}.db-al-a .db-go{margin-top: -2px;}.db-al-items{list-style: none;margin: 6px 0 0;padding: 0;display: grid;gap: 5px;}.db-al-items li{display: grid;grid-template-columns: auto minmax(0, 1fr);gap: 8px;align-items: center;font-size: 12.5px;color: var(--ink-2);min-width: 0;}.db-al-items li > span:first-child{justify-self: start;display: inline-flex;align-items: center;height: var(--amuse-chip-height, 20px);padding: 0 6px;border-radius: var(--r-chip);font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;white-space: nowrap;}.db-al-items .tx{min-width: 0;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-meter i{transform-origin: 0 50%;}.db-bk[hidden]{display: none;}.db-bk-in{display: grid;gap: 10px;margin: 12px;padding: 12px 14px;border-radius: var(--r);background: var(--card-in-bg, var(--surface-2));}.db-bk-tx{display: grid;gap: 3px;min-width: 0;}.db-bk-tx b{font-size: var(--amuse-fs-body, 13px);font-weight: 800;color: var(--ink);word-break: keep-all;}.db-bk-tx small{font-size: var(--amuse-fs-meta, 12px);color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-bk-act{display: flex;flex-wrap: wrap;gap: 6px;}.db-bk-act .db-btn{height: 32px;padding: 0 12px;font-size: var(--amuse-fs-body, 13px);text-decoration: none;}\u003c/style>\n\u003cdiv class=\"db-page\">\n\u003cdiv class=\"db-head\">\n\u003cdiv>\n\u003cdiv class=\"db-hello\">안녕하세요 👋🏻\u003c/div>\n\u003cdiv class=\"db-name\">\u003c!--osw-hello-->&nbsp;\u003c/div>\n\u003cdiv class=\"db-date\">\u003cb id=\"dbDate\">오늘\u003c/b> · \u003cspan id=\"dbUpdated\">불러오는 중\u003c/span>\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-actions\">\n\u003cbutton type=\"button\" class=\"db-btn\" onclick=\"if (window.openNewStudentFromMain) openNewStudentFromMain(); else loadPage('students')\">\u003ci>＋\u003c/i>학생 등록\u003c/button>\n\u003cbutton type=\"button\" class=\"db-btn\" onclick=\"loadPage('payment')\">\u003ci>₩\u003c/i>결제 등록\u003c/button>\n\u003cbutton type=\"button\" class=\"db-btn primary\" onclick=\"openScheduleFromMain({ view: 'day' })\">오늘 스케줄 →\u003c/button>\n\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-row1\">\n\u003csection class=\"db-today\" id=\"dbToday\" onclick=\"openScheduleFromMain({ view: 'day' })\">\n\u003cdiv class=\"db-ring\">\u003cdiv class=\"db-skel\" style=\"margin:0;height:128px;opacity:.15\">\u003c/div>\u003c/div>\n\u003cdiv>\u003cdiv class=\"lab\">오늘 수업\u003c/div>\u003c/div>\n\u003c/section>\n\u003cdiv class=\"db-kpis\" id=\"dbKpis\">\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-row2\">\n\u003cdiv class=\"db-main\">\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\n\u003ch2>오늘 타임라인\u003cspan id=\"dbTodayCount\">\u003c/span>\u003c/h2>\n\u003cbutton type=\"button\" class=\"db-link\" onclick=\"openScheduleFromMain({ view: 'day' })\">스케줄에서 처리 ›\u003c/button>\n\u003c/div>\n\u003cdiv id=\"dbTimeline\">\u003cdiv class=\"db-skel\">\u003c/div>\u003cdiv class=\"db-skel\">\u003c/div>\u003c/div>\n\u003cdiv class=\"db-legend\">\n\u003cspan>\u003ci class=\"lg-st-done\">\u003c/i>출석\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-absent\">\u003c/i>결석\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-plan\">\u003c/i>예정\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-late\">\u003c/i>시간 지남 · 미처리\u003c/span>\n\u003cem class=\"db-lg-word\">결제 전 = 칸 안 글자\u003c/em>\n\u003c/div>\n\u003c/section>\n\u003c/div>\n\u003cdiv class=\"db-side\">\n\u003csection id=\"dbBackupNote\" class=\"db-card db-bk\" hidden>\u003c/section>\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\u003ch2>스마트 알림\u003cspan id=\"dbAlertCount\">\u003c/span>\u003c/h2>\u003c/div>\n\u003cdiv id=\"dbAlertFilters\" class=\"db-filters\" hidden>\u003c/div>\n\u003cdiv id=\"dbAlerts\">\u003cdiv class=\"db-skel\">\u003c/div>\u003c/div>\n\u003c/section>\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\u003ch2>최근 활동\u003c/h2>\u003cspan class=\"db-link\" style=\"cursor:default\">강사 앱 포함\u003c/span>\u003c/div>\n\u003cdiv id=\"dbActivities\" class=\"db-act\">\u003cdiv class=\"db-skel\" style=\"margin:0\">\u003c/div>\u003c/div>\n\u003c/section>\n\u003c/div>\n\u003c/div>\n\u003c/div>\n\u003cscript>var DB = (function () {\nvar DAYS = [\"일\", \"월\", \"화\", \"수\", \"목\", \"금\", \"토\"];\nvar ALERT_TYPES = [\n[\"overdue\", \"출석 미처리\"],\n[\"reregister\", \"재등록\"],\n[\"unpaid\", \"결제 미등록\"],\n[\"delayover\", \"연기 2주 초과\"],\n[\"gapold\", \"사유 미입력\"],\n[\"noTeacher\", \"강사 미정\"],\n[\"unscheduled\", \"일정 없음\"],\n[\"inactive\", \"장기 미출석\"]\n];\nvar ALERT_TITLES = {\ngapold: \"수업이 없던 주는 끝난 다음 월요일에 강사 목록에 올라요. 그 뒤 한 주가 지나도 사유를 고르지 않은 주예요\"\n};\nvar ALERT_LIMIT = 6;\nvar ALERT_SHORT = { gapold: \"사유 미입력\" };\nvar DB_SCOPES = [\"students\", \"enroll\", \"sched\", \"lessons\", \"pay\", \"teachers\", \"catalog\", \"payroll\", \"gaps\", \"gapnotes\", \"~member\"];\nvar NOTE_SCOPES = [\"gapnotes\", \"sched\", \"enroll\", \"students\", \"gaps\"];\nvar DB_FRESH_MS = 90000;\nvar state = { data: null, alertFilter: \"\", showAll: false, loadedAt: null, stale: false };\nfunction $(id) { return document.getElementById(id); }\nfunction esc(v) {\nreturn String(v === undefined || v === null ? \"\" : v)\n.replace(/&/g, \"&amp;\").replace(/\u003c/g, \"&lt;\").replace(/>/g, \"&gt;\")\n.replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\");\n}\nfunction arg(v) { return esc(JSON.stringify(String(v === undefined || v === null ? \"\" : v))); }\nfunction won(n) { return Number(n || 0).toLocaleString(\"ko-KR\"); }\nfunction byName(list, get) {\nvar copy = (list || []).slice();\nreturn window.amuseSortPeople ? window.amuseSortPeople(copy, get) : copy;\n}\nfunction pad(n) { return String(n).padStart(2, \"0\"); }\nfunction nowTime() { var d = new Date(); return pad(d.getHours()) + \":\" + pad(d.getMinutes()); }\nfunction toMin(t) { var p = String(t || \"0:0\").split(\":\"); return Number(p[0]) * 60 + Number(p[1] || 0); }\nfunction clsKind(item) {\nvar label = item && item.classLabel;\nif (label === \"그룹\") return \"grp\";\nif (label === \"1:1\" || (!label && Number((item && item.capacity) || 1) \u003c= 1)) return \"one\";\nreturn \"duo\";\n}\nfunction money(n) {\nn = Number(n || 0);\nif (Math.abs(n) >= 10000) return { v: Math.round(n / 10000).toLocaleString(\"ko-KR\"), u: \"만원\" };\nreturn { v: won(n), u: \"원\" };\n}\nfunction delta(cur, prev) {\ncur = Number(cur || 0); prev = Number(prev || 0);\nif (!prev) return cur ? \"지난달 기록 없음\" : \"지난달과 같음\";\nvar rate = (cur - prev) / Math.abs(prev) * 100;\nif (Math.abs(rate) \u003c 0.5) return \"지난달과 같음\";\nreturn '\u003cspan class=\"' + (rate > 0 ? \"db-up\" : \"db-down\") + '\">' + (rate > 0 ? \"▲\" : \"▼\") + \" \" + Math.abs(rate).toFixed(0) + \"%\u003c/span>\";\n}\nfunction load() {\nif (window.amuseOsBootWait && window.amuseOsBootWait(function () { if ($(\"dbTimeline\")) load(); })) {\nif (window.__dbData) showSaved();\nreturn;\n}\nvar bootFresh = !!window.__dbBootFresh;\nwindow.__dbBootFresh = false;\nif (bootFresh) { state.loadedAt = new Date(); state.stale = false; }\nvar bootNotes = bootFresh ? window.__dbBootNotes : null;\nwindow.__dbBootNotes = null;\nif (bootNotes) applyNotes(bootNotes);\ntakeBackup(window.__dbData);\nvar kept = !bootFresh ? freshData() : null;\nif (kept) {\nwindow.__dbData = kept.data;\nwindow.__dbSavedAt = 0;\nstate.data = kept.data;\nstate.loadedAt = new Date(kept.at);\nstate.stale = false;\nvar noteInfo = window.amuseFresh ? amuseFresh.info(\"dash:notes\") : null;\nvar keptNotes = noteInfo && new Date(noteInfo.at).toDateString() === new Date().toDateString() ? amuseFresh.hit(\"dash:notes\") : undefined;\nif (typeof keptNotes === \"string\") applyNotes(keptNotes);\nrender();\nloadBackupNote();\nif (typeof keptNotes !== \"string\") loadNotes();\nreturn;\n}\nif (window.__dbData) {\nif (!bootFresh && window.__dbSavedAt) showSaved();\nelse { state.data = window.__dbData; render(); }\n}\nif (bootFresh && window.__dbData) { loadBackupNote(); return; }\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nvar askBackup = !backupFresh();\nvar run = google.script.run\n.withSuccessHandler(function (json) {\nif (!$(\"dbTimeline\")) return;\nvar data = JSON.parse(json || \"{}\");\ntakeBackup(data);\nwindow.__dbData = data;\nwindow.__dbSavedAt = 0;\nstate.data = data;\nstate.loadedAt = new Date();\nstate.stale = false;\nkeep(data, snap);\nrender();\nif (window.amuseOsSaveScreen) window.amuseOsSaveScreen();\nloadBackupNote();\n})\n.withFailureHandler(function (error) {\nif (!$(\"dbTimeline\")) return;\n$(\"dbTimeline\").innerHTML ='\u003cdiv class=\"db-empty\">\u003cb>불러오지 못했습니다\u003c/b>' + esc(error && error.message || error) + \"\u003c/div>\";\n});\nif (askBackup) run.getDashboardDataJson({ bk: 1 });\nelse run.getDashboardDataJson();\nloadNotes();\n}\nfunction takeBackup(data) {\nif (!data || typeof data !== \"object\" || !Object.prototype.hasOwnProperty.call(data, \"backupNotice\")) return;\nvar r = data.backupNotice;\ndelete data.backupNotice;\nif (r && typeof r === \"object\") window.__dbBackup = { r: r, at: Date.now() };\n}\nfunction backupFresh() {\nvar b = window.__dbBackup;\nreturn !!(b && b.r && Date.now() - (Number(b.at) || 0) \u003c 1800000);\n}\nfunction keep(data, snap) {\nif (!window.amuseFresh || !data || !data.today) return;\ntry { amuseFresh.put(\"dash:data\", data, DB_SCOPES, snap || undefined); } catch (e) {}\n}\nfunction slotAt(d, hm) {\nvar n = 0, seen = {};\n(d.todayTeachers || []).forEach(function (t) {\n(t.lessons || []).forEach(function (l) {\nvar e = String(l.endTime || \"\");\nif (e && !seen[e]) { seen[e] = true; if (e \u003c= hm) n++; }\n});\n});\nreturn n;\n}\nfunction freshData() {\nif (!window.amuseFresh) return null;\nvar d = amuseFresh.hit(\"dash:data\");\nvar info = amuseFresh.info(\"dash:data\");\nif (!d || !info || !d.today) return null;\nvar now = new Date();\nif (Date.now() - info.at >= DB_FRESH_MS) return null;\nvar today = now.getFullYear() + \"-\" + pad(now.getMonth() + 1) + \"-\" + pad(now.getDate());\nif (d.today !== today) return null;\nvar then = new Date(info.at);\nif (slotAt(d, pad(then.getHours()) + \":\" + pad(then.getMinutes())) !== slotAt(d, nowTime())) return null;\nreturn { data: d, at: info.at };\n}\nfunction showSaved() {\nstate.data = window.__dbData;\nstate.loadedAt = window.__dbSavedAt ? new Date(window.__dbSavedAt) : null;\nstate.stale = true;\nrender();\n}\nfunction refresh(opts) {\nvar force = !!(opts && opts.force);\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nreturn new Promise(function (resolve) {\ngoogle.script.run\n.withSuccessHandler(function (json) {\nif (!$(\"dbTimeline\")) { resolve(); return; }\ntry {\nvar same = !!state.data && JSON.stringify(state.data) === json;\nvar data = same ? state.data : JSON.parse(json || \"{}\");\nkeep(data, snap);\nwindow.__dbData = data;\nwindow.__dbSavedAt = 0;\nstate.data = data;\nstate.loadedAt = new Date();\nstate.stale = false;\nif (!same || force) render();\nelse $(\"dbUpdated\").textContent = pad(state.loadedAt.getHours()) + \":\" + pad(state.loadedAt.getMinutes()) + \" 기준\";\nif (window.amuseOsSaveScreen) window.amuseOsSaveScreen();\nloadNotes().then(function () { resolve(); });\n} catch (e) {\nconsole.error(\"대시보드 새로고침 오류:\", e);\nresolve(\"error\");\n}\n})\n.withFailureHandler(function () { resolve(\"error\"); })\n.getDashboardDataJson();\n});\n}\nfunction render() {\nvar d = state.data;\nif (!d) return;\nvar t = new Date(d.today + \"T00:00:00\");\n$(\"dbDate\").textContent = (t.getMonth() + 1) + \"월 \" + t.getDate() + \"일 \" + DAYS[t.getDay()] + \"요일\";\n$(\"dbUpdated\").textContent = (state.loadedAt ? pad(state.loadedAt.getHours()) + \":\" + pad(state.loadedAt.getMinutes()) : nowTime()) + \" 기준\" + (state.stale ? \" · 확인 중\" : \"\");\nrenderToday(d.kpi || {}, d.todayTeachers || []);\nrenderKpis(d.kpi || {}, d.trend || []);\nrenderTimeline(d.todayTeachers || [], d.hours || { open: \"10:00\", close: \"22:00\" });\nrenderAlerts(d.alerts || [], d.alertCounts || {});\nrenderActivities(d.activities || []);\nheadMotion();\n}\nfunction headMotion() {\nvar M = window.AmuseMotion;\nif (!M || !M.claim($(\"dbKpis\"), \"page:dashboard\")) return;\nvar nums = Array.prototype.slice.call(document.querySelectorAll(\"#dbToday .db-num, #dbKpis .db-num\"));\nnums.forEach(function (el, i) { M.count(el, 120 + Math.min(i, 8) * 60); });\nvar rings = document.querySelectorAll(\"#dbToday .db-ring-done, #dbToday .db-ring-absent\");\nArray.prototype.forEach.call(rings, function (c, i) { M.draw(c, 120 + i * 80); });\nvar meter = document.querySelector(\"#dbKpis .db-meter i\");\nif (meter) M.bar(meter, 360);\n}\nfunction renderToday(k, teachers) {\nvar total = Number(k.todayTotal || 0);\nvar done = Number(k.todayDone || 0), absent = Number(k.todayAbsent || 0);\nvar C = 2 * Math.PI * 54;\nvar doneLen = total ? C * done / total : 0;\nvar absentLen = total ? C * absent / total : 0;\nvar now = nowTime(), next = null;\nteachers.forEach(function (tc) {\ntc.lessons.forEach(function (l) {\nif (l.status !== \"예정\" || l.startTime \u003c now) return;\nif (!next || l.startTime \u003c next.time) next = { time: l.startTime, names: [l.studentName], teacher: tc.name, cap: l.capacity };\nelse if (next.time === l.startTime && next.teacher === tc.name) next.names.push(l.studentName);\n});\n});\nif (next) next.names = byName(next.names);\n$(\"dbToday\").innerHTML =\n'\u003cdiv class=\"db-ring\">\u003csvg width=\"128\" height=\"128\" viewBox=\"0 0 128 128\">' +\n'\u003ccircle cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#2a2a2a\" stroke-width=\"10\"/>' +\n(doneLen ? '\u003ccircle class=\"db-ring-done\" cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#1f8f5c\" style=\"stroke:var(--st-done,#1f8f5c)\" stroke-width=\"10\" stroke-dasharray=\"' + doneLen + \" \" + C + '\"/>' : \"\") +\n(absentLen ? '\u003ccircle class=\"db-ring-absent\" cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#8f949c\" style=\"stroke:var(--st-absent,#8f949c)\" stroke-width=\"10\" stroke-dasharray=\"' + absentLen + \" \" + C + '\" stroke-dashoffset=\"' + (-doneLen) + '\"/>' : \"\") +\n'\u003c/svg>\u003cdiv class=\"c\">\u003cdiv>\u003cb class=\"db-num\">' + (done + absent) + \"/\" + total + \"\u003c/b>\u003csmall>처리 완료\u003c/small>\u003c/div>\u003c/div>\u003c/div>\" +\n\"\u003cdiv>\" +\n'\u003cdiv class=\"lab\">오늘 수업' + (teachers.length ? \" · 강사 \" + teachers.length + \"명\" : \"\") + \"\u003c/div>\" +\n'\u003cdiv class=\"db-tstats\">' +\n'\u003cdiv>\u003cb class=\"db-num\">' + done + \"\u003c/b>\u003cspan>출석\u003c/span>\u003c/div>\" +\n'\u003cdiv>\u003cb class=\"db-num\">' + absent + \"\u003c/b>\u003cspan>결석\u003c/span>\u003c/div>\" +\n'\u003cdiv>\u003cb class=\"db-num\">' + (k.todayLeft || 0) + \"\u003c/b>\u003cspan>남은 수업\u003c/span>\u003c/div>\" +\n\"\u003c/div>\" +\n'\u003cdiv class=\"db-next\">' + (next\n? \"\u003cem>다음\u003c/em>\u003cb>\" + esc(next.time) + \"\u003c/b>\u003cspan>\" + esc(next.names[0] + (next.names.length > 1 ? \" 외 \" + (next.names.length - 1) + \"명\" : \"\")) + \" · \" + esc(next.teacher) + \"\u003c/span>\"\n: (total ? \"\u003cem>완료\u003c/em>\u003cspan>오늘 남은 수업이 없어요\u003c/span>\" : \"\u003cem>오늘\u003c/em>\u003cspan>잡힌 수업이 없어요\u003c/span>\")) +\n\"\u003c/div>\" +\n\"\u003c/div>\";\n}\nfunction spark(values, color) {\nif (!values.length) return \"\";\nvar max = Math.max.apply(null, values.concat([1])), min = Math.min.apply(null, values);\nvar range = max - min || 1;\nvar pts = values.map(function (v, i) {\nvar x = values.length > 1 ? i / (values.length - 1) * 160 : 80;\nvar y = 30 - (v - min) / range * 26;\nreturn [x, y];\n});\nvar last = pts[pts.length - 1];\nreturn '\u003csvg class=\"db-spark\" viewBox=\"0 0 160 34\" preserveAspectRatio=\"none\" aria-hidden=\"true\">' +\n'\u003cpolyline fill=\"none\" stroke=\"' + color + '\" stroke-width=\"2\" vector-effect=\"non-scaling-stroke\" points=\"' + pts.map(function (p) { return p[0] + \",\" + p[1]; }).join(\" \") + '\"/>' +\n'\u003ccircle cx=\"' + last[0] + '\" cy=\"' + last[1] + '\" r=\"3\" fill=\"' + color + '\"/>\u003c/svg>';\n}\nfunction renderKpis(k, trend) {\nvar sales = money(k.sales), prevSales = money(k.salesPrev), payroll = money(k.payroll);\nvar ratio = k.sales ? Math.round(Number(k.payroll || 0) / k.sales * 100) : 0;\nvar salesTrend = trend.map(function (x) { return x.sales; });\nvar lessonTrend = trend.map(function (x) { return x.lessons; });\n$(\"dbKpis\").innerHTML =\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'report\\')\" title=\"' + won(k.sales) + '원 · 결제 ' + (k.salesCount || 0) + '건\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">이번 달 매출\u003c/div>\u003cdiv class=\"val db-num\">' + sales.v + \"\u003csmall>\" + sales.u + \"\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + delta(k.sales, k.salesPrev) + \" · 지난달 \" + prevSales.v + prevSales.u + \"\u003c/div>\u003c/div>\" +\nspark(salesTrend, \"#e95a1a\") +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'students\\')\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">재원생\u003c/div>\u003cdiv class=\"val db-num\">' + (k.activeStudents || 0) + \"\u003csmall>명\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + (k.pausedStudents ? \"휴원 \" + k.pausedStudents + \"명 별도\" : \"퇴원 · 휴원 제외\") + \"\u003c/div>\u003c/div>\" +\n'\u003cdiv class=\"db-chips\">\u003cspan class=\"g\">신규 +' + (k.newStudents || 0) + '\u003c/span>\u003cspan class=\"r\">퇴원 −' + (k.retiredStudents || 0) + \"\u003c/span>\" +\n(k.pausedStudents ? \"\u003cspan>휴원 \" + k.pausedStudents + \"\u003c/span>\" : \"\") + \"\u003c/div>\" +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"openScheduleFromMain({ view: \\'week\\' })\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">이번 달 수업\u003c/div>\u003cdiv class=\"val db-num\">' + (k.lessonCount || 0) + \"\u003csmall>회\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + delta(k.lessonCount, k.lessonCountPrev) + \" · 지난달 \" + (k.lessonCountPrev || 0) + \"회\u003c/div>\u003c/div>\" +\nspark(lessonTrend, \"#17181a\") +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'payroll\\')\" title=\"' + won(k.payroll) + '원 (세전)\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">예상 인건비\u003c/div>\u003cdiv class=\"val db-num\">' + (k.payroll === null || k.payroll === undefined ? \"-\" : payroll.v) + \"\u003csmall>\" + payroll.u + \"\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + (k.sales ? \"매출의 \" + ratio + \"% · 세전\" : \"세전 · 급여관리에서 확인\") + \"\u003c/div>\u003c/div>\" +\n'\u003cdiv class=\"db-meter\">\u003ci style=\"width:' + Math.min(100, ratio) + '%\">\u003c/i>\u003c/div>' +\n\"\u003c/button>\";\n}\nfunction renderTimeline(teachers, hours) {\nvar total = teachers.reduce(function (s, t) { return s + t.total; }, 0);\n$(\"dbTodayCount\").textContent = total ? total + \"건 · 강사 \" + teachers.length + \"명\" : \"\";\nif (!teachers.length) {\n$(\"dbTimeline\").innerHTML = '\u003cdiv class=\"db-empty\">\u003cb>오늘은 수업이 없어요\u003c/b>스케줄에서 새 일정을 잡을 수 있어요.\u003c/div>';\nreturn;\n}\nvar open = Math.floor(toMin(hours.open || \"10:00\") / 60) * 60;\nvar close = Math.ceil(toMin(hours.close || \"22:00\") / 60) * 60;\nteachers.forEach(function (t) {\nt.lessons.forEach(function (l) {\nopen = Math.min(open, Math.floor(toMin(l.startTime) / 60) * 60);\nclose = Math.max(close, Math.ceil(toMin(l.endTime) / 60) * 60);\n});\n});\nvar span = Math.max(60, close - open);\nvar pct = function (m) { return ((m - open) / span * 100).toFixed(3) + \"%\"; };\nvar scale = \"\", grid = \"\";\nfor (var m = open; m \u003c= close; m += 60) {\nif ((m - open) % 120 === 0 || span \u003c= 600 || m === close) scale += '\u003cspan style=\"left:' + pct(m) + '\">' + (m / 60) + \"\u003c/span>\";\ngrid += '\u003ci class=\"gl\" style=\"left:' + pct(m) + '\">\u003c/i>';\n}\nvar now = nowTime(), nowMin = toMin(now);\nvar showNow = nowMin >= open && nowMin \u003c= close;\nvar rows = teachers.map(function (t, idx) {\nvar slots = [], byKey = {};\nt.lessons.forEach(function (l) {\nvar key = Number(l.capacity || 1) > 1 ? l.startTime + \"|\" + l.classLabel : l.scheduleId;\nif (!byKey[key]) { byKey[key] = { startTime: l.startTime, endTime: l.endTime, classLabel: l.classLabel, capacity: l.capacity, items: [] }; slots.push(byKey[key]); }\nbyKey[key].items.push(l);\n});\nvar blocks = slots.map(function (s) {\nvar allDone = s.items.every(function (l) { return l.status === \"진행완료\"; });\nvar allAbsent = s.items.every(function (l) { return l.status === \"당일결석\"; });\nvar pending = s.items.some(function (l) { return l.status === \"예정\"; });\nvar cls = allDone ? \"done\" : allAbsent ? \"absent\" : (pending && s.endTime \u003c= now ? \"late\" : pending ? \"plan\" : \"done\");\nvar stText = { done: \"출석\", absent: \"결석\", plan: \"예정\", late: \"시간 지남 · 미처리\" }[cls];\ns.items = byName(s.items);\nvar first = s.items[0].studentName + (s.items.length > 1 ? \" 외 \" + (s.items.length - 1) : \"\");\nvar trial = s.items[0].trial && typeof s.items[0].trial === \"object\" ? s.items[0].trial : null;\nvar left = pct(toMin(s.startTime));\nvar width = ((toMin(s.endTime) - toMin(s.startTime)) / span * 100 - 0.4).toFixed(3) + \"%\";\nreturn '\u003cdiv class=\"db-blk ' + cls + '\" style=\"left:' + left + \";width:\" + width + ';top:11px\" title=\"' +\nesc(s.startTime + \"–\" + s.endTime + \" \" + s.items.map(function (l) { return l.studentName; }).join(\", \") + \" · \" + stText) + '\">' +\n(Number(s.capacity || 1) > 1 ? '\u003cspan class=\"tag ' + clsKind(s) + '\">' + esc(s.classLabel) + \"\u003c/span>\" : \"\") +\n(trial ? '\u003cspan class=\"tag trial\"' + (trial.kind ? ' title=\"' + esc(trial.kind) + '\"' : \"\") + '>체험\u003c/span>' : \"\") +\n(s.items.some(function (l) { return l.prepaid || l.prepaidDone; }) ? '\u003cspan class=\"tag prepaid\">결제 전\u003c/span>' : \"\") +\n'\u003cspan class=\"nm\">' + esc(first) + \"\u003c/span>\" +\n\"\u003csmall>\" + esc(s.startTime) + (cls === \"late\" ? \" 미처리\" : cls === \"absent\" ? \" 결석\" : \"\") + \"\u003c/small>\u003c/div>\";\n}).join(\"\");\nvar processed = t.done + t.absent;\nreturn '\u003cdiv class=\"db-tl-row\" onclick=\"openScheduleFromMain({ teacherId: ' + arg(t.teacherId) + \", view: 'day' })\\\">\" +\n'\u003cdiv class=\"db-tl-who\">\u003cb>' + esc(t.name) + \"\u003c/b>\u003csmall>\" + esc(t.subject || \"\") + \" · \" + processed + \"/\" + t.total + \"\u003c/small>\" +\n'\u003cdiv class=\"pg\" title=\"' + esc(\"출석 \" + t.done + \" · 결석 \" + t.absent + \" · 전체 \" + t.total) + '\">' +\n'\u003ci class=\"d\" style=\"width:' + (t.total ? t.done / t.total * 100 : 0) + '%\">\u003c/i>' +\n'\u003ci class=\"a\" style=\"width:' + (t.total ? t.absent / t.total * 100 : 0) + '%\">\u003c/i>\u003c/div>\u003c/div>' +\n'\u003cdiv class=\"db-lane\">' + grid + blocks +\n(showNow ? '\u003cdiv class=\"db-now' + (idx === 0 ? \" first\" : \"\") + '\" data-time=\"' + now + '\" style=\"left:' + pct(nowMin) + '\">\u003c/div>' : \"\") +\n\"\u003c/div>\u003c/div>\";\n}).join(\"\");\n$(\"dbTimeline\").innerHTML =\n'\u003cdiv class=\"db-tl\">\u003cdiv class=\"db-tl-hours\">\u003cdiv>\u003c/div>\u003cdiv class=\"scale\">' + scale + \"\u003c/div>\u003c/div>\" + rows + \"\u003c/div>\";\n}\nfunction alertAction(a) {\nvar types = a.types || [];\nif (types.indexOf(\"overdue\") !== -1) return { primary: true, title: \"출석 처리\", js: \"openScheduleFromMain({ view: 'day', date: \" + arg(a.date) + (a.scheduleId ? \", lessonId: \" + arg(a.scheduleId) : \"\") + \" })\" };\nif (types.indexOf(\"reregister\") !== -1 || types.indexOf(\"unpaid\") !== -1) return { primary: false, title: \"결제 등록\", js: \"openPaymentFromMain(\" + arg(a.studentId) + \", \" + arg(a.enrollmentId) + \")\" };\nif (types.indexOf(\"noTeacher\") !== -1) return { primary: false, title: \"강사 정하기\", js: \"openStudentFromMain(\" + arg(a.studentId) + \")\" };\nif (types.indexOf(\"unscheduled\") !== -1 && a.unscheduledEnrollmentId && typeof window.openScheduleAddOverlay === \"function\") {\nreturn { primary: false, title: \"일정 잡기\", js: \"openScheduleAddOverlay(\" + arg(a.unscheduledEnrollmentId) + \")\" };\n}\nreturn { primary: false, title: \"학생 보기\", js: \"openStudentFromMain(\" + arg(a.studentId) + \")\" };\n}\nfunction renderAlerts(alerts, counts) {\n$(\"dbAlertCount\").textContent = alerts.length ? alerts.length + \"명\" : \"\";\nvar filters = $(\"dbAlertFilters\");\nvar types = ALERT_TYPES.filter(function (t) { return counts[t[0]]; });\nObject.keys(counts).forEach(function (k) {\nif (!counts[k] || ALERT_TYPES.some(function (t) { return t[0] === k; })) return;\nvar tag = null;\nalerts.forEach(function (a) { (a.tags || []).forEach(function (t) { if (!tag && t.type === k) tag = t; }); });\ntypes.push([k, tag ? String(tag.label).replace(/ \\d+건$/, \"\") : k]);\n});\nvar unread = notesUnread();\nvar withNotes = unread > 0 || (Array.isArray(notes.items) && notes.items.length > 0) || state.alertFilter === \"notes\";\nif (types.length > 1 || withNotes) {\nfilters.hidden = false;\nfilters.innerHTML = [[\"\", \"전체\", alerts.length]].concat(types.map(function (t) { return [t[0], t[1], counts[t[0]]]; }))\n.map(function (f) {\nreturn '\u003cbutton type=\"button\" class=\"' + (state.alertFilter === f[0] ? \"on\" : \"\") + '\"' +\n(ALERT_TITLES[f[0]] ? ' title=\"' + esc(ALERT_TITLES[f[0]]) + '\"' : \"\") +\n' onclick=\"DB.setAlertFilter(' + arg(f[0]) + ')\">' + esc(f[1]) + \" \" + f[2] + \"\u003c/button>\";\n}).join(\"\") +\n(withNotes\n? '\u003cbutton type=\"button\" class=\"nt' + (state.alertFilter === \"notes\" ? \" on\" : \"\") + '\" onclick=\"DB.setAlertFilter(\\'notes\\')\" title=\"강사가 바꾼 사유 · 학원 휴일로 고른 주 · 지난 수업 출석 넣음 · 나중에 기록\">사유 확인' +\n(unread ? ' \u003cem class=\"db-nt-n\">' + unread + \"\u003c/em>\" : \"\") + \"\u003c/button>\"\n: \"\");\n} else {\nfilters.hidden = true;\nstate.alertFilter = \"\";\n}\nif (state.alertFilter === \"notes\") { renderNotes(); return; }\nvar mreq = state.alertFilter ? \"\" : memberReqRow() + lateRecRow() + autoRetireRow();\nif (!alerts.length) {\n$(\"dbAlerts\").innerHTML = mreq || '\u003cdiv class=\"db-allgood\">✓ 지금은 알림이 없어요\u003c/div>';\nreturn;\n}\nvar list = byName(alerts).filter(function (a) { return !state.alertFilter || (a.types || []).indexOf(state.alertFilter) !== -1; });\nvar shown = state.showAll ? list : list.slice(0, ALERT_LIMIT);\n$(\"dbAlerts\").innerHTML = mreq + shown.map(function (a) {\nvar act = alertAction(a);\nreturn '\u003cdiv class=\"db-al db-al-a\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"openStudentFromMain(' + arg(a.studentId) + ')\">' +\n\"\u003cb>\" + esc(a.title) + \"\u003c/b>\" +\nalertLines(alertItems(a)) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go' + (act.primary ? \" p\" : \"\") + '\" title=\"' + act.title + '\" aria-label=\"' + act.title + '\" onclick=\"' + act.js + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}).join(\"\") +\n(list.length > ALERT_LIMIT\n? '\u003cbutton type=\"button\" class=\"db-more\" onclick=\"DB.toggleAll()\">' + (state.showAll ? \"접기\" : \"더 보기 (\" + (list.length - ALERT_LIMIT) + \"명)\") + \"\u003c/button>\"\n: \"\");\n}\nfunction alertItems(a) {\nvar raw = [];\nif (Array.isArray(a.items) && a.items.length) {\nraw = a.items;\n} else {\nvar types = a.types || [];\nvar tags = a.tags || [];\nvar lines = String(a.meta || \"\").split(\" / \");\ntypes.forEach(function (type, i) {\nvar tag = tags[i] && tags[i].type === type ? tags[i] : null;\nvar label = tag ? String(tag.label).replace(/ \\d+건$/, \"\") : type;\nvar line = lines.length === types.length ? lines[i] : (i === 0 ? String(a.meta || \"\") : \"\");\nvar parts = lines.length === types.length && /, /.test(line) && tag && / \\d+건$/.test(tag.label) ? line.split(\", \") : [line];\nparts.forEach(function (text) { raw.push({ type: type, label: label, text: text }); });\n});\n}\nvar out = [], seen = {};\nraw.forEach(function (it) {\nif (!it || !it.type) return;\nvar text = String(it.text === undefined || it.text === null ? \"\" : it.text);\nvar k = it.type + \"\\u0001\" + text;\nif (seen[k]) return;\nseen[k] = true;\nout.push({ type: String(it.type), label: ALERT_SHORT[it.type] || String(it.label || it.type), text: text });\n});\nreturn out;\n}\nfunction alertLines(items) {\nif (!items.length) return \"\";\nreturn '\u003cul class=\"db-al-items\">' + items.map(function (it) {\nreturn '\u003cli>\u003cspan class=\"t-' + esc(it.type) + '\">' + esc(it.label) + \"\u003c/span>\" +\n'\u003cspan class=\"tx\" title=\"' + esc(it.title || it.text) + '\">' + (it.html !== undefined ? it.html : esc(it.text)) + \"\u003c/span>\u003c/li>\";\n}).join(\"\") + \"\u003c/ul>\";\n}\nfunction memberReqCount() {\nvar m = state.data && state.data.memberRequests;\nvar n = m && typeof m === \"object\" ? Number(m.count) : 0;\nreturn isFinite(n) && n > 0 ? Math.min(Math.floor(n), 9999) : 0;\n}\nfunction memberReqRow() {\nvar n = memberReqCount();\nif (!n) return \"\";\nvar go = \"DB.openMemberRequests()\";\nreturn '\u003cdiv class=\"db-al db-al-a db-al-mreq\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"' + go + '\">' +\n\"\u003cb>회원 재등록 요청 \" + n + \"\u003c/b>\" +\nalertLines([{ type: \"mreq\", label: \"회원페이지\", text: \"회원이 보낸 재등록 요청 \" + n + \"건 · 아직 확인 안 함\", title: \"회원페이지 › 요청 · 건의\" }]) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go\" title=\"요청 보기\" aria-label=\"회원 재등록 요청 보기\" onclick=\"' + go + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}\nfunction autoRetireRow() {\nvar a = state.data && state.data.autoRetired;\nvar items = a && Array.isArray(a.items) ? a.items.filter(function (x) { return x && x.studentId && x.name; }) : [];\nif (!items.length) return \"\";\nvar names = items.map(function (x) {\nreturn '\u003ca href=\"#\" class=\"db-ar-n\" onclick=\"event.preventDefault();event.stopPropagation();openStudentFromMain(' + arg(x.studentId) + ')\">' + esc(x.name) + \"\u003c/a>\";\n}).join(\" · \");\nvar plain = items.map(function (x) { return x.name; }).join(\" · \");\nreturn '\u003cdiv class=\"db-al db-al-a db-al-auto\">' +\n'\u003cdiv class=\"db-al-main\">' +\n\"\u003cb>자동 퇴원 \" + items.length + \"명\u003c/b>\" +\nalertLines([{\ntype: \"mreq\", label: \"자동 퇴원\", text: \"\",\ntitle: plain + \" — 수강권을 다 쓰고 60일 동안 결제 · 수업이 없었어요. 다시 다니면 상태를 바꿔 주세요.\",\nhtml: names + ' \u003cspan class=\"db-ar-why\">· 수강권을 다 쓰고 60일 동안 수업이 없었어요\u003c/span>'\n}]) +\n\"\u003c/div>\" +\n\"\u003c/div>\";\n}\nfunction lateRecCount() {\nif (Array.isArray(notes.items)) {\nreturn notes.items.filter(function (n) { return (n.kind === \"late\" || n.kind === \"attendance\") && !n.read && !notes.busy[n.id]; }).length +\n(Number(notes.lateExtra) || 0);\n}\nvar g = state.data && state.data.gapNotices;\nvar n = g ? Number(g.late || 0) : 0;\nreturn isFinite(n) && n > 0 ? Math.min(Math.floor(n), 9999) : 0;\n}\nfunction lateRecRow() {\nvar n = lateRecCount();\nif (!n) return \"\";\nvar go = \"DB.setAlertFilter('notes')\";\nreturn '\u003cdiv class=\"db-al db-al-a db-al-late\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"' + go + '\">' +\n\"\u003cb>지난 수업 \" + n + \"개가 나중에 기록됐어요\u003c/b>\" +\nalertLines([{ type: \"mreq\", label: \"나중에 기록\", text: \"일정 없이 한 수업을 강사가 나중에 기록했어요 · 사유 확인에서 확인해 주세요\", title: \"일정 없이 한 수업을 강사가 나중에 기록했어요\" }]) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go\" title=\"사유 확인 보기\" aria-label=\"나중에 기록한 지난 수업 보기\" onclick=\"' + go + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}\nfunction openMemberRequests() {\nif (typeof window.loadPage !== \"function\") return;\nvar before = window.MBO;\nwindow.loadPage(\"member\", document.querySelector('.menu-item[data-page=\"member\"]'));\nvar tries = 0;\n(function wait() {\nvar page = window.amuseState && window.amuseState.page;\nif (page && page !== \"member\" && page !== \"dashboard\") return;\nvar m = window.MBO;\nif (page === \"member\" && m && m !== before && typeof m.go === \"function\" && document.getElementById(\"mboPage\")) {\ntry { m.go(\"ask\", \"요청\"); } catch (e) {}\nreturn;\n}\nif (++tries \u003c 200) setTimeout(wait, 50);\n})();\n}\nfunction setAlertFilter(type) { state.alertFilter = type; state.showAll = false; render(); }\nfunction toggleAll() {\nif (state.alertFilter === \"notes\") notes.showAll = !notes.showAll;\nelse state.showAll = !state.showAll;\nrender();\n}\nvar NOTE_KIND = { change: \"사유 바뀜\", academy: \"학원 휴일로 고른 주\", attendance: \"지난 수업 출석 넣음\", late: \"나중에 기록\" };\nvar NOTE_LIMIT = 6;\nvar notes = { items: null, unread: null, showRead: false, showAll: false, busy: {}, loading: false, error: \"\" };\nfunction notesUnread() {\nif (Array.isArray(notes.items)) {\nreturn notes.items.filter(function (n) { return !n.read && !n.superseded && !notes.busy[n.id]; }).length;\n}\nif (notes.unread !== null && notes.unread !== undefined) return Number(notes.unread) || 0;\nvar g = state.data && state.data.gapNotices;\nreturn g ? Number(g.unread || 0) : 0;\n}\nfunction applyNotes(json) {\nnotes.loading = false;\nvar r = null;\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = null; }\nif (!r || r.ok === false || !Array.isArray(r.items)) {\nnotes.error = (r && r.message) || \"사유 확인을 불러오지 못했어요.\";\nreturn \"error\";\n}\nnotes.error = \"\";\nnotes.items = r.items.map(function (n) { return notes.busy[n.id] ? Object.assign({}, n, { read: true }) : n; });\nnotes.unread = Number(r.unread || 0);\nvar inList = r.items.filter(function (n) { return (n.kind === \"late\" || n.kind === \"attendance\") && !n.read; }).length;\nnotes.lateExtra = Math.max(0, (Number(r.late) || 0) - inList);\nreturn undefined;\n}\nfunction loadNotes() {\nnotes.loading = true;\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nreturn new Promise(function (resolve) {\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar res = applyNotes(json);\nif (res !== \"error\" && window.amuseFresh) { try { amuseFresh.put(\"dash:notes\", json, NOTE_SCOPES, snap || undefined); } catch (e) {} }\nif ($(\"dbAlerts\")) render();\nresolve(res);\n})\n.withFailureHandler(function (error) {\nnotes.loading = false;\nnotes.error = String((error && error.message) || error || \"사유 확인을 불러오지 못했어요.\");\nif ($(\"dbAlerts\")) render();\nresolve(\"error\");\n})\n.getGapNoticesJson();\n});\n}\nfunction noteStamp(at) {\nvar s = String(at || \"\");\nvar m = /^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2}))?/.exec(s);\nif (!m) return s;\nvar md = (m[1] === String(new Date().getFullYear()) ? \"\" : m[1] + \".\") + m[2] + \".\" + m[3];\nreturn md + (m[4] ? \" \" + m[4] + \":\" + m[5] : \"\");\n}\nfunction reasonChip(label, old) {\nvar t = String(label || \"\");\nif (!t) return '\u003cspan class=\"db-rc open' + (old ? \" old\" : \"\") + '\">미입력\u003c/span>';\nvar cls = /^학생/.test(t) ? \"st\" : /^강사/.test(t) ? \"tc\" : \"ac\";\nreturn '\u003cspan class=\"db-rc ' + cls + (old ? \" old\" : \"\") + '\">' + esc(t) + \"\u003c/span>\";\n}\nfunction roJosa(word) {\nvar s = String(word || \"\").replace(/[\\s)\\].·,!?~-]+$/g, \"\");\nfor (var i = s.length - 1; i >= 0; i--) {\nvar c = s.charCodeAt(i);\nif (c >= 0xAC00 && c \u003c= 0xD7A3) { var j = (c - 0xAC00) % 28; return j === 0 || j === 8 ? \"로\" : \"으로\"; }\nif (/[0-9A-Za-z]/.test(s.charAt(i))) break;\n}\nreturn \"(으)로\";\n}\nfunction noteRow(n) {\nvar busy = !!notes.busy[n.id];\nvar read = !!n.read || busy;\nvar names = (n.studentNames || []).join(\" · \");\nvar academy = n.kind === \"academy\" || (n.kind === \"change\" && n.academy === true);\nvar kindKey = academy ? \"academy\" : n.kind;\nvar kind = NOTE_KIND[kindKey] || \"확인\";\nvar swap;\nif (n.kind === \"attendance\" || n.kind === \"late\") {\nswap = '\u003cspan class=\"db-nt-att\">' + esc(n.after || (n.kind === \"late\" ? \"나중에 기록\" : \"출석 넣음\")) + \"\u003c/span>\";\n} else if (n.before) {\nswap = reasonChip(n.before, true) + '\u003cspan class=\"db-nt-arrow\" aria-label=\"에서\">→\u003c/span>' + reasonChip(n.after);\n} else {\nswap = reasonChip(n.after) + '\u003csmall class=\"db-nt-first\">처음 고름\u003c/small>';\n}\nreturn '\u003cdiv class=\"db-nt' + (read ? \" read\" : \"\") + '\" data-note=\"' + esc(n.id) + '\">' +\n'\u003cdiv class=\"db-nt-main\">' +\n'\u003cdiv class=\"db-nt-l1\">\u003cb>' + esc(names || \"-\") + '\u003c/b>\u003cspan class=\"db-nt-kind k-' + esc(kindKey) + '\">' + esc(kind) + \"\u003c/span>\" +\n(academy && n.kind === \"change\" ? '\u003cspan class=\"db-nt-kind k-change\">사유 바뀜\u003c/span>' : \"\") +\n'\u003cspan class=\"db-nt-wk\">' + esc([n.subject, n.weekLabel].filter(function (x) { return x; }).join(\" · \")) + \"\u003c/span>\u003c/div>\" +\n'\u003cdiv class=\"db-nt-swap\">' + swap + \"\u003c/div>\" +\n(n.note ? '\u003cp class=\"db-nt-why\">“' + esc(n.note) + \"”\u003c/p>\" : \"\") +\n(n.superseded ? '\u003cp class=\"db-nt-sub\">지금은 ' + esc(n.current || \"다른 사유\") + roJosa(n.current || \"다른 사유\") + \" 바뀌었어요\u003c/p>\" : \"\") +\n'\u003csmall class=\"db-nt-who\">' + esc(n.teacherName || \"\") + (n.at ? \" · \" + esc(noteStamp(n.at)) : \"\") +\n(n.read && n.readAt ? \" · 읽음 \" + esc(noteStamp(n.readAt)) : \"\") + \"\u003c/small>\" +\n\"\u003c/div>\" +\n(read\n? '\u003cspan class=\"db-nt-done\">읽음\u003c/span>'\n: '\u003cbutton type=\"button\" class=\"db-nt-read\" onclick=\"DB.readNote(' + arg(n.id) + ')\">읽음\u003c/button>') +\n\"\u003c/div>\";\n}\nfunction renderNotes() {\nvar box = $(\"dbAlerts\");\nif (!box) return;\nif (!Array.isArray(notes.items)) {\nbox.innerHTML = notes.error\n? '\u003cdiv class=\"db-empty\">\u003cb>불러오지 못했어요\u003c/b>' + esc(notes.error) + \"\u003c/div>\"\n: '\u003cdiv class=\"db-skel\">\u003c/div>';\nif (!notes.loading && !notes.error) loadNotes();\nreturn;\n}\nvar unread = notes.items.filter(function (n) { return !n.read && !notes.busy[n.id]; });\nvar read = notes.items.filter(function (n) { return n.read || notes.busy[n.id]; });\nvar list = notes.showRead ? unread.concat(read) : unread;\nvar shown = notes.showAll ? list : list.slice(0, NOTE_LIMIT);\nbox.innerHTML =\n'\u003cdiv class=\"db-nt-bar\">\u003cspan>강사가 바꾼 사유 · 학원 휴일로 고른 주 · 지난 수업 출석 넣음 · 나중에 기록 — 읽으면 흐려져요\u003c/span>' +\n(unread.length ? '\u003cbutton type=\"button\" class=\"db-nt-all\" onclick=\"DB.readAllNotes()\">모두 읽음\u003c/button>' : \"\") + \"\u003c/div>\" +\n(shown.length ? shown.map(noteRow).join(\"\") : '\u003cdiv class=\"db-allgood\">✓ 새로 볼 사유가 없어요\u003c/div>') +\n(list.length > NOTE_LIMIT\n? '\u003cbutton type=\"button\" class=\"db-more\" onclick=\"DB.toggleAll()\">' + (notes.showAll ? \"접기\" : \"더 보기 (\" + (list.length - NOTE_LIMIT) + \"건)\") + \"\u003c/button>\"\n: \"\") +\n(read.length\n? '\u003cbutton type=\"button\" class=\"db-more db-nt-toggle\" onclick=\"DB.toggleReadNotes()\">' + (notes.showRead ? \"읽은 것 숨기기\" : \"읽은 것 보기 (\" + read.length + \"건)\") + \"\u003c/button>\"\n: \"\") +\n'\u003cbutton type=\"button\" class=\"db-more db-nt-hr\" onclick=\"DB.openGapStats()\">강사관리 › 인사 · 통계에서 전체 보기 ›\u003c/button>';\n}\nfunction markRead(ids) {\nids = (ids || []).filter(function (id) { return id && !notes.busy[id]; });\nif (!ids.length) return;\nids.forEach(function (id) { notes.busy[id] = true; });\nrender();\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar r = {};\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = {}; }\nif (r.ok === false) { fail(r.message); return; }\nids.forEach(function (id) { delete notes.busy[id]; });\n(notes.items || []).forEach(function (n) { if (ids.indexOf(n.id) !== -1) n.read = true; });\nnotes.unread = null;\nif (window.amuseFresh) { amuseFresh.drop(\"dash:\"); amuseFresh.drop(\"menu:notes\"); amuseFresh.drop(\"menu:dashboard\"); }\nif ($(\"dbAlerts\")) render();\n})\n.withFailureHandler(function (error) { fail(String((error && error.message) || error || \"\")); })\n.markGapNoticesReadJson(ids);\nfunction fail(message) {\nids.forEach(function (id) { delete notes.busy[id]; });\nif (window.Toast) Toast.error(\"읽음으로 바꾸지 못했어요. \" + (message || \"\"));\nif ($(\"dbAlerts\")) render();\n}\n}\nfunction readNote(id) { markRead([String(id || \"\")]); }\nfunction readAllNotes() {\nmarkRead((notes.items || []).filter(function (n) { return !n.read; }).map(function (n) { return n.id; }));\n}\nfunction toggleReadNotes() { notes.showRead = !notes.showRead; notes.showAll = false; render(); }\nfunction openGapStats() {\nvar s = window.amuseState || (window.amuseState = {});\ns.teacherView = \"each\";\ns.teacherDetailTab = \"hr\";\ns.teacherGapFocus = true;\nvar first = (notes.items || []).filter(function (n) { return !n.read && n.teacherId; })[0];\nif (first) s.selectedTeacherId = first.teacherId;\nloadPage(\"teacher\");\n}\nvar backupNote = null;\nfunction loadBackupNote() {\nvar box = $(\"dbBackupNote\");\nif (!box || box.getAttribute(\"data-asked\") === \"1\") return;\nbox.setAttribute(\"data-asked\", \"1\");\nif (backupFresh()) {\nbackupNote = window.__dbBackup.r;\nrenderBackupNote();\nreturn;\n}\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar r = null;\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = null; }\nbackupNote = r;\nif (r && typeof r === \"object\") window.__dbBackup = { r: r, at: Date.now() };\nrenderBackupNote();\n})\n.withFailureHandler(function () {   })\n.getBackupNoticeJson();\n}\nfunction backupStamp(ms) {\nvar n = Number(ms);\nif (!(n > 0)) return \"\";\nvar d = new Date(n);\nreturn pad(d.getMonth() + 1) + \".\" + pad(d.getDate()) + \" (\" + DAYS[d.getDay()] + \") \" + pad(d.getHours()) + \":\" + pad(d.getMinutes());\n}\nfunction renderBackupNote() {\nvar box = $(\"dbBackupNote\");\nif (!box) return;\nvar r = backupNote;\nvar url = r && typeof r.url === \"string\" && /^https:\\/\\/docs\\.google\\.com\\/spreadsheets\\/d\\/[A-Za-z0-9_-]+\\/export\\?format=xlsx$/.test(r.url) ? r.url : \"\";\nif (!r || r.show !== true || !url) { box.hidden = true; box.innerHTML = \"\"; return; }\nvar m = /^(\\d{4})-(\\d{2})$/.exec(String(r.ym || \"\"));\nbox.innerHTML =\n'\u003cdiv class=\"db-bk-in\">' +\n'\u003cdiv class=\"db-bk-tx\">' +\n\"\u003cb>이번 달 백업을 컴퓨터에 받아 두세요\u003c/b>\" +\n\"\u003csmall>\" + (m ? Number(m[2]) + \"월 · \" : \"\") + \"최신 백업 \" + esc(backupStamp(r.latestAt) || \"-\") + \"\u003c/small>\" +\n\"\u003c/div>\" +\n'\u003cdiv class=\"db-bk-act\">' +\n'\u003ca class=\"db-btn primary db-bk-get\" href=\"' + esc(url) + '\" target=\"_blank\" rel=\"noopener\">받기\u003c/a>' +\n'\u003cbutton type=\"button\" class=\"db-btn db-bk-done\" onclick=\"DB.dismissBackupNote()\">받았어요\u003c/button>' +\n\"\u003c/div>\" +\n\"\u003c/div>\";\nbox.hidden = false;\n}\nfunction dismissBackupNote() {\nvar r = backupNote;\nif (!r || !r.ym) return;\nvar ym = r.ym;\nbackupNote = null;\nvar kept = window.__dbBackup;\nwindow.__dbBackup = { r: { show: false, ym: ym }, at: Date.now() };\nrenderBackupNote();\ngoogle.script.run\n.withSuccessHandler(function () {})\n.withFailureHandler(function (error) {\nbackupNote = r;\nwindow.__dbBackup = kept;\nrenderBackupNote();\nif (window.Toast) Toast.error(\"숨기지 못했어요. \" + String((error && error.message) || error || \"\"));\n})\n.dismissBackupNoticeJson(ym);\n}\nfunction ago(ms) {\nif (!ms) return \"\";\nvar diff = (Date.now() - ms) / 60000;\nif (diff \u003c 2) return \"방금\";\nif (diff \u003c 60) return Math.floor(diff) + \"분 전\";\nif (diff \u003c 60 * 24) return Math.floor(diff / 60) + \"시간 전\";\nif (diff \u003c 60 * 48) return \"어제\";\nvar d = new Date(ms);\nreturn (d.getMonth() + 1) + \".\" + d.getDate();\n}\nfunction dotOf(feature) {\nvar f = String(feature || \"\");\nif (f.indexOf(\"결제\") !== -1 || f.indexOf(\"환불\") !== -1) return \"k\";\nif (f.indexOf(\"결석\") !== -1) return \"\";\nif (f.indexOf(\"레슨\") !== -1 || f.indexOf(\"출석\") !== -1) return \"g\";\nif (f.indexOf(\"스케줄\") !== -1 || f.indexOf(\"연기\") !== -1) return \"b\";\nreturn \"\";\n}\nfunction renderActivities(list) {\nif (!list.length) { $(\"dbActivities\").innerHTML = '\u003cdiv class=\"db-empty\" style=\"padding:16px 0\">기록이 없어요\u003c/div>'; return; }\n$(\"dbActivities\").innerHTML = list.slice(0, 6).map(function (a) {\nreturn '\u003cdiv class=\"db-ac\">\u003cspan class=\"db-dot ' + dotOf(a.feature) + '\">\u003c/span>' +\n'\u003cdiv title=\"' + esc(a.target + \" · \" + a.detail) + '\">\u003cb>' + esc(a.feature) + \"\u003c/b> \u003cspan>\" + esc(a.target) + (a.detail ? \" · \" + esc(a.detail) : \"\") + \"\u003c/span>\u003c/div>\" +\n\"\u003ctime>\" + esc(a.at ? ago(a.at) : a.when) + \"\u003c/time>\u003c/div>\";\n}).join(\"\");\n}\nreturn {\nload: load, refresh: refresh, setAlertFilter: setAlertFilter, toggleAll: toggleAll, openMemberRequests: openMemberRequests,\nreadNote: readNote, readAllNotes: readAllNotes, toggleReadNotes: toggleReadNotes, openGapStats: openGapStats,\ndismissBackupNote: dismissBackupNote\n};\n})();\nwindow.loadDashboard = DB.load;\nwindow.amusePageRefresh = DB.refresh;\nwindow.amusePageDirty = function () { return false; };\nDB.load();\u003c/script>\n";
+var bootPageHtml = "\u003cstyle>.db-page{--card: var(--surface);--orange-2: var(--orange-soft);--ok-2: var(--ok-soft);--red: var(--danger);--red-2: var(--danger-soft);--duo: #4b5bd6;--duo-2: #eef0fd;--grp: #8a3fc4;--grp-2: #f5edfb;width: 100%;box-sizing: border-box;padding: 28px 30px;background: var(--bg);color: var(--ink);font-family: var(--font);-webkit-font-smoothing: antialiased;min-height: 100%;}.db-page *, .db-page *::before, .db-page *::after{box-sizing: border-box;}.db-num{font-variant-numeric: tabular-nums;letter-spacing: -.02em;}.db-head{display: flex;justify-content: space-between;align-items: flex-end;gap: 20px;margin-bottom: 20px;}.db-hello{font-size: 14px;color: var(--ink-2);font-weight: 600;}.db-name{margin: 4px 0 6px;font-size: var(--amuse-fs-page, 26px);font-weight: 800;letter-spacing: -0.8px;}.db-date{font-size: 13px;color: var(--ink-3);}.db-date b{color: var(--ink);font-weight: 700;}.db-actions{display: flex;gap: 6px;}.db-btn{height: 38px;padding: 0 14px;border-radius: var(--r);border: 1px solid var(--line);background: var(--surface);font: inherit;font-size: 14px;font-weight: 700;color: var(--ink);display: inline-flex;align-items: center;gap: 6px;cursor: pointer;}.db-btn:hover{background: var(--surface-2);}.db-btn.primary{background: var(--orange);border-color: var(--orange);color: #fff;}.db-btn.primary:hover{background: var(--orange-hover);}.db-btn i{font-style: normal;font-size: 15px;opacity: .6;}.db-row1{display: grid;grid-template-columns: 470px minmax(0, 1fr);gap: 14px;margin-bottom: 14px;}.db-today{background: var(--black);color: #fff;border-radius: var(--r);padding: 22px 24px;display: grid;grid-template-columns: 128px 1fr;gap: 22px;align-items: center;position: relative;overflow: hidden;cursor: pointer;}.db-today::after{content: \"\";position: absolute;right: -60px;top: -60px;width: 220px;height: 220px;background: radial-gradient(circle, rgba(233, 90, 26, .28), transparent 65%);pointer-events: none;}.db-today .lab{font-size: 13px;color: var(--on-black-2);font-weight: 600;}.db-ring{position: relative;width: 128px;height: 128px;}.db-ring svg{transform: rotate(-90deg);display: block;}.db-ring .c{position: absolute;inset: 0;display: grid;place-items: center;text-align: center;}.db-ring .c b{display: block;font-size: 30px;font-weight: 800;}.db-ring .c small{font-size: 12px;color: var(--on-black-2);}.db-tstats{display: grid;grid-template-columns: repeat(3, 1fr);gap: 8px;margin: 10px 0 16px;position: relative;z-index: 1;}.db-tstats div{border-left: 2px solid var(--black-2);padding-left: 10px;}.db-tstats b{display: block;font-size: 22px;font-weight: 800;}.db-tstats span{font-size: 12px;color: var(--on-black-2);}.db-next{position: relative;z-index: 1;display: flex;align-items: center;gap: 10px;background: var(--black);border: 1px solid var(--black-2);border-radius: var(--r);padding: 10px 12px;font-size: 13px;white-space: nowrap;overflow: hidden;}.db-next em{font-style: normal;color: var(--orange);font-weight: 800;}.db-next span{color: var(--on-black-2);overflow: hidden;text-overflow: ellipsis;}.db-kpis{display: grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap: 14px;}.db-kpi{background: var(--card);border: 1px solid var(--card-line);border-radius: var(--r);box-shadow: var(--card-shadow);padding: 18px 18px 14px;display: flex;flex-direction: column;justify-content: space-between;min-height: 172px;cursor: pointer;text-align: left;font: inherit;color: inherit;transition: border-color .15s ease, box-shadow .15s ease;}.db-kpi:hover{border-color: var(--line-strong);box-shadow: var(--card-shadow), 0 2px 10px rgba(0, 0, 0, .04);}.db-kpi .lab{font-size: 12px;color: var(--ink-3);font-weight: 700;}.db-kpi .val{margin-top: 10px;font-size: 30px;font-weight: 800;}.db-kpi .val small{font-size: 14px;font-weight: 700;color: var(--ink-3);margin-left: 2px;}.db-kpi .sub{margin-top: 4px;font-size: 13px;color: var(--ink-2);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-up{color: var(--ok-ink);font-weight: 700;}.db-down{color: var(--red);font-weight: 700;}.db-spark{margin-top: 12px;width: 100%;height: 34px;display: block;overflow: visible;}.db-chips{display: flex;flex-wrap: wrap;gap: 6px;margin-top: 12px;}.db-chips span{font-size: 12px;font-weight: 700;padding: 4px 8px;border-radius: var(--r-chip);background: var(--line-2);color: var(--ink-2);}.db-chips span.g{background: var(--ok-2);color: var(--ok-ink);}.db-chips span.r{background: var(--red-2);color: var(--danger-ink);}.db-meter{margin-top: 14px;height: 6px;background: var(--line-2);border-radius: var(--r);overflow: hidden;}.db-meter i{display: block;height: 100%;background: var(--ink);}.db-row2{display: grid;grid-template-columns: minmax(0, 1fr) 380px;gap: 14px;align-items: start;}.db-side{display: grid;gap: 14px;align-content: start;min-width: 0;}.db-card{background: var(--card);border: 1px solid var(--card-line);border-radius: var(--r);box-shadow: var(--card-shadow);overflow: hidden;min-width: 0;}.db-card-h{display: flex;justify-content: space-between;align-items: center;gap: 10px;padding: 16px 20px 12px;}.db-card-h h2{margin: 0;font-size: 15px;font-weight: 800;}.db-card-h h2 span{margin-left: 6px;color: var(--ink-3);font-weight: 600;font-size: 13px;}.db-link{border: 0;background: none;padding: 0;font: inherit;font-size: 13px;color: var(--ink-2);font-weight: 700;cursor: pointer;}.db-link:hover{color: var(--ink);}.db-empty{padding: 34px 16px;text-align: center;color: var(--ink-3);font-size: 13px;}.db-empty b{display: block;color: var(--ink-2);font-size: 14px;margin-bottom: 4px;}.db-skel{height: 96px;margin: 8px 20px 18px;border-radius: var(--r);background: linear-gradient(90deg, var(--line-2), var(--surface-2), var(--line-2));background-size: 200% 100%;animation: dbShimmer 1.2s infinite;}@keyframes dbShimmer{to{background-position: -200% 0;}}.db-tl{padding: 4px 20px 14px;}.db-tl-hours, .db-tl-row{display: grid;grid-template-columns: 116px minmax(0, 1fr);}.db-tl-hours .scale{position: relative;height: 22px;}.db-tl-hours .scale span{position: absolute;transform: translateX(-50%);font-size: 11px;color: var(--ink-3);}.db-tl-row{border-top: 1px solid var(--line-2);align-items: center;cursor: pointer;}.db-tl-row:hover .db-tl-who b{color: var(--orange-ink);}.db-tl-who b{display: block;font-size: 14px;}.db-tl-who small{font-size: 12px;color: var(--ink-3);}.db-tl-who .pg{display: flex;margin-top: 5px;height: 4px;width: 92px;background: var(--line-2);border-radius: var(--r);overflow: hidden;}.db-tl-who .pg i{display: block;flex: none;height: 100%;}.db-tl-who .pg i.d{background: var(--st-done, #1f8f5c);}.db-tl-who .pg i.a{background: var(--st-absent, #8f949c);}.db-lane{position: relative;height: 64px;}.db-lane .gl{position: absolute;top: 0;bottom: 0;width: 1px;background: var(--line-2);}.db-blk{position: absolute;height: 42px;border-radius: var(--r);padding: 5px 8px;font-size: 12px;font-weight: 700;line-height: 1.25;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;}.db-blk small{display: block;font-weight: 500;font-size: 11px;opacity: .8;}.db-blk.done{background: var(--st-done-soft, #eaf6ef);color: var(--st-done-ink, #17694a);box-shadow: inset 2px 0 0 var(--st-done, #1f8f5c);}.db-blk.done .nm::before{content: \"✓ \";}.db-blk.absent{background: var(--st-absent-soft, #f2f2ef);color: var(--st-absent-ink, #555a62);box-shadow: inset 2px 0 0 var(--st-absent, #8f949c);}.db-blk.absent .nm{text-decoration: line-through;text-decoration-thickness: 1.5px;}.db-blk.plan{background: var(--st-plan-soft, #fdf1ea);color: var(--st-plan-ink, #a63d0c);box-shadow: inset 2px 0 0 var(--st-plan, #e95a1a);}.db-blk.late{background: var(--st-late-soft, #fdecea);color: var(--st-late-ink, #b3261e);box-shadow: inset 2px 0 0 var(--st-late, #d93025);}.db-blk.done small, .db-blk.absent small, .db-blk.plan small, .db-blk.late small{opacity: 1;}.db-blk .tag, .db-blk .tag.duo, .db-blk .tag.grp, .db-blk .tag.prepaid, .db-blk .tag.trial{font-size: 10px;font-weight: 800;padding: 1px 0;border-radius: 0;background: transparent;color: inherit;margin-right: 4px;text-decoration: none;display: inline-block;}.db-now{position: absolute;top: 0;bottom: 0;width: 2px;margin-left: -1px;background: var(--orange);z-index: 1;pointer-events: none;}.db-now.first::before{content: attr(data-time);position: absolute;top: -20px;left: 50%;transform: translateX(-50%);font-size: 10px;font-weight: 800;color: #fff;background: var(--orange);padding: 1px 5px;border-radius: var(--r);}.db-legend{display: flex;gap: 14px;justify-content: flex-end;padding: 0 20px 16px;font-size: 12px;color: var(--ink-2);}.db-blk .tag.prepaid{padding: 0 3px;border-radius: var(--r-chip);box-shadow: inset 0 0 0 1px currentColor;opacity: .85;}.db-legend .db-lg-word{font-style: normal;color: var(--ink-2);}.db-legend i{display: inline-block;width: 9px;height: 9px;border-radius: var(--r);margin-right: 5px;vertical-align: -1px;}.db-legend .lg-st-done{background: var(--st-done-soft, #eaf6ef);box-shadow: inset 0 0 0 1px var(--st-done, #1f8f5c), inset 3px 0 0 var(--st-done, #1f8f5c);}.db-legend .lg-st-absent{background: var(--st-absent-soft, #f2f2ef);box-shadow: inset 0 0 0 1px var(--st-absent, #8f949c), inset 3px 0 0 var(--st-absent, #8f949c);}.db-legend .lg-st-plan{background: var(--st-plan-soft, #fdf1ea);box-shadow: inset 0 0 0 1px var(--st-plan, #e95a1a), inset 3px 0 0 var(--st-plan, #e95a1a);}.db-legend .lg-st-late{background: var(--st-late-soft, #fdecea);box-shadow: inset 0 0 0 1px var(--st-late, #d93025), inset 3px 0 0 var(--st-late, #d93025);}.db-filters{display: flex;flex-wrap: wrap;gap: 4px;padding: 0 20px 10px;}.db-filters button{border: 0;font: inherit;font-size: 12px;font-weight: 700;padding: 5px 9px;border-radius: var(--r);color: var(--ink-2);background: var(--line-2);cursor: pointer;}.db-filters button.on{background: var(--ink);color: #fff;}.db-al{display: grid;grid-template-columns: minmax(0, 1fr) auto;gap: 12px;align-items: center;padding: 12px 20px;border-top: 1px solid var(--line-2);}.db-al-main{min-width: 0;cursor: pointer;}.db-al b{font-size: 14px;}.db-al .tags{display: inline-flex;flex-wrap: wrap;gap: 3px;margin-left: 6px;vertical-align: 1px;}.db-al .tags span{font-size: 11px;font-weight: 800;padding: 2px 5px;border-radius: var(--r-chip);}.t-overdue{background: var(--red-2);color: var(--danger-ink);}.t-reregister{background: var(--orange-2);color: var(--st-plan-ink);}.t-mreq{background: var(--orange-2);color: var(--st-plan-ink);}.t-unscheduled{background: var(--info-soft);color: var(--info);}.t-noTeacher{background: var(--orange-2);color: var(--st-plan-ink);}.t-inactive{background: var(--warn-soft);color: var(--warn);}.t-unpaid{background: var(--line-2);color: var(--ink-2);}.db-al p{margin: 3px 0 0;font-size: 12px;color: var(--ink-3);white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-go{width: 30px;height: 30px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);display: grid;place-items: center;color: var(--ink-2);font-size: 16px;cursor: pointer;padding: 0;}.db-go:hover{border-color: var(--line-strong);color: var(--ink);}.db-go.p{background: var(--orange);border-color: var(--orange);color: #fff;}.db-more{display: block;width: 100%;border: 0;border-top: 1px solid var(--line-2);background: var(--surface-2);height: 36px;font: inherit;font-size: 13px;font-weight: 700;color: var(--ink-2);cursor: pointer;}.db-allgood{padding: 22px 20px 26px;font-size: 13px;color: var(--ok-ink);font-weight: 700;border-top: 1px solid var(--line-2);}.db-act{padding: 2px 20px 14px;}.db-ac{display: grid;grid-template-columns: 14px minmax(0, 1fr) auto;gap: 10px;padding: 9px 0;position: relative;font-size: 13px;}.db-ac::before{content: \"\";position: absolute;left: 6px;top: 22px;bottom: -9px;width: 1px;background: var(--line);}.db-ac:last-child::before{display: none;}.db-dot{width: 13px;height: 13px;border-radius: 50%;border: 3px solid #fff;box-shadow: 0 0 0 1px var(--line);background: var(--ink-3);margin-top: 2px;}.db-dot.k{background: var(--ink);}.db-dot.g{background: var(--st-done, #1f8f5c);}.db-dot.b{background: var(--info);}.db-ac > div{min-width: 0;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-ac b{font-weight: 700;}.db-ac span{color: var(--ink-2);}.db-ac time{font-size: 12px;color: var(--ink-3);white-space: nowrap;}@media (max-width: 1200px){.db-row1, .db-row2{grid-template-columns: minmax(0, 1fr);}}.db-page{padding: var(--amuse-page-pad, 24px);}.db-head{margin-bottom: var(--amuse-head-gap, 16px);}.db-row1{gap: var(--amuse-gap, 12px);margin-bottom: var(--amuse-gap, 12px);}.db-kpis, .db-row2, .db-side{gap: var(--amuse-gap, 12px);}.db-today .lab{font-size: var(--amuse-fs-label, 12px);}.db-kpi .lab{font-size: var(--amuse-fs-label, 12px);}.db-kpi .sub{font-size: var(--amuse-fs-meta, 12px);}.db-kpi .val{overflow-wrap: normal;}.db-kpi .val small{display: inline-block;white-space: nowrap;}@media (min-width: 1201px) and (max-width: 1300px){.db-kpi{padding-left: 14px;padding-right: 14px;}.db-kpi .val{font-size: 24px;}.db-kpi .val small{font-size: var(--amuse-fs-body, 13px);}}.db-chips span{display: inline-flex;align-items: center;height: 20px;padding: 0 7px;font-size: var(--amuse-fs-chip, 11.5px);}.db-card-h h2 span{font-size: var(--amuse-fs-meta, 12px);}.db-legend{font-size: var(--amuse-fs-meta, 12px);}.db-al .tags span{display: inline-flex;align-items: center;height: var(--amuse-chip-height, 20px);padding: 0 6px;font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;}.db-ac time{font-size: var(--amuse-fs-meta, 12px);}.db-more{font-size: var(--amuse-fs-body, 13px);}.t-delayover{background: var(--red-2);color: var(--danger-ink);}.t-gapold{background: var(--surface-3);color: var(--ink-2);}.db-main{display: grid;gap: var(--amuse-gap, 12px);align-content: start;min-width: 0;}.db-filters button.nt{gap: 5px;}.db-filters button .db-nt-n{font-style: normal;display: inline-flex;align-items: center;justify-content: center;box-sizing: border-box;min-width: 18px;height: 18px;padding: 0 5px;border-radius: 9px;background: var(--orange);color: #fff;font-size: 11px;font-weight: 800;line-height: 1;font-variant-numeric: tabular-nums;}.db-filters button.on .db-nt-n{background: var(--surface);color: var(--ink);}.db-nt-bar{display: flex;align-items: center;justify-content: space-between;gap: 10px;padding: 2px 20px 10px;font-size: var(--amuse-fs-meta, 12px);color: var(--ink-3);}.db-nt-all{flex: none;height: 28px;padding: 0 10px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);font: inherit;font-size: 12px;font-weight: 700;color: var(--ink-2);cursor: pointer;white-space: nowrap;}.db-nt-all:hover{border-color: var(--ink);color: var(--ink);}.db-nt{display: grid;grid-template-columns: minmax(0, 1fr) auto;gap: 12px;align-items: start;padding: 12px 20px;border-top: 1px solid var(--line-2);}.db-nt.read{background: var(--surface-2);}.db-nt.read .db-nt-main{opacity: .62;}.db-nt-main{display: grid;gap: 5px;min-width: 0;}.db-nt-l1{display: flex;align-items: center;flex-wrap: wrap;gap: 4px 8px;min-width: 0;}.db-nt-l1 b{font-size: 14px;font-weight: 700;word-break: keep-all;overflow-wrap: anywhere;}.db-nt-kind{display: inline-flex;align-items: center;height: 20px;padding: 0 6px;border-radius: var(--r-chip);font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;background: var(--line-2);color: var(--ink-2);}.db-nt-kind.k-change{background: var(--orange-2);color: var(--orange-ink, #c94c12);}.db-nt-kind.k-academy{background: var(--surface-3);color: var(--ink-2);}.db-nt-kind.k-attendance{background: var(--ok-soft);color: var(--ok-ink);}.db-nt-wk{font-size: 12px;color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-nt-swap{display: flex;align-items: center;flex-wrap: wrap;gap: 6px;font-size: 13px;}.db-nt-arrow{color: var(--ink-3);}.db-nt-first{font-size: 12px;color: var(--ink-3);}.db-nt-att{font-size: 13px;color: var(--ink-2);}.db-rc{display: inline-flex;align-items: center;height: 20px;padding: 0 8px;border-radius: var(--r-chip);font-size: 11px;font-weight: 700;white-space: nowrap;}.db-rc.st{background: var(--orange-2);color: var(--orange-ink, #c94c12);}.db-rc.tc{background: var(--info-soft);color: var(--info);}.db-rc.ac{background: var(--surface-3);color: var(--ink-2);}.db-rc.open{background: var(--surface);color: var(--ink-3);box-shadow: inset 0 0 0 1px var(--line);}.db-rc.old{background: var(--line-2);color: var(--ink-3);text-decoration: line-through;text-decoration-color: rgba(143, 148, 156, .7);}.db-nt-why{margin: 0;padding-left: 10px;border-left: 2px solid var(--line);font-size: 13px;line-height: 1.5;color: var(--ink);word-break: keep-all;overflow-wrap: anywhere;}.db-nt-sub{margin: 0;font-size: 12px;color: var(--ink-3);}.db-nt-who{font-size: 12px;color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-nt-read{height: 30px;padding: 0 11px;border: 1px solid var(--line);border-radius: var(--r);background: var(--surface);font: inherit;font-size: 13px;font-weight: 700;color: var(--ink);cursor: pointer;white-space: nowrap;}.db-nt-read:hover{border-color: var(--ink);}.db-nt-done{height: 30px;display: inline-flex;align-items: center;font-size: 12px;font-weight: 700;color: var(--ink-3);white-space: nowrap;}.db-more.db-nt-hr{color: var(--ink-3);font-weight: 600;text-align: right;padding: 0 20px;}.db-filters{gap: 6px;}.db-filters button{display: inline-flex;align-items: center;height: 28px;padding: 0 10px;border: 1px solid var(--line);background: var(--surface);color: var(--ink-2);font-size: var(--amuse-fs-filter, 12px);}.db-filters button:hover{background: var(--surface-2);}.db-filters button.on{border-color: var(--amuse-seg-active, #111);background: var(--amuse-seg-active, #111);color: #fff;}.db-filters button{flex: none;white-space: nowrap;}.db-al.db-al-a{align-items: start;}.db-al-a .db-go{margin-top: -2px;}.db-al-items{list-style: none;margin: 6px 0 0;padding: 0;display: grid;gap: 5px;}.db-al-items li{display: grid;grid-template-columns: auto minmax(0, 1fr);gap: 8px;align-items: center;font-size: 12.5px;color: var(--ink-2);min-width: 0;}.db-al-items li > span:first-child{justify-self: start;display: inline-flex;align-items: center;height: var(--amuse-chip-height, 20px);padding: 0 6px;border-radius: var(--r-chip);font-size: var(--amuse-fs-chip, 11.5px);font-weight: 700;white-space: nowrap;}.db-al-items .tx{min-width: 0;white-space: nowrap;overflow: hidden;text-overflow: ellipsis;}.db-meter i{transform-origin: 0 50%;}.db-bk[hidden]{display: none;}.db-bk-in{display: grid;gap: 10px;margin: 12px;padding: 12px 14px;border-radius: var(--r);background: var(--card-in-bg, var(--surface-2));}.db-bk-tx{display: grid;gap: 3px;min-width: 0;}.db-bk-tx b{font-size: var(--amuse-fs-body, 13px);font-weight: 800;color: var(--ink);word-break: keep-all;}.db-bk-tx small{font-size: var(--amuse-fs-meta, 12px);color: var(--ink-3);font-variant-numeric: tabular-nums;}.db-bk-act{display: flex;flex-wrap: wrap;gap: 6px;}.db-bk-act .db-btn{height: 32px;padding: 0 12px;font-size: var(--amuse-fs-body, 13px);text-decoration: none;}\u003c/style>\n\u003cdiv class=\"db-page\">\n\u003cdiv class=\"db-head\">\n\u003cdiv>\n\u003cdiv class=\"db-hello\">안녕하세요 👋🏻\u003c/div>\n\u003cdiv class=\"db-name\">\u003c!--osw-hello-->&nbsp;\u003c/div>\n\u003cdiv class=\"db-date\">\u003cb id=\"dbDate\">오늘\u003c/b> · \u003cspan id=\"dbUpdated\">불러오는 중\u003c/span>\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-actions\">\n\u003cbutton type=\"button\" class=\"db-btn\" onclick=\"if (window.openNewStudentFromMain) openNewStudentFromMain(); else loadPage('students')\">\u003ci>＋\u003c/i>학생 등록\u003c/button>\n\u003cbutton type=\"button\" class=\"db-btn\" onclick=\"loadPage('payment')\">\u003ci>₩\u003c/i>결제 등록\u003c/button>\n\u003cbutton type=\"button\" class=\"db-btn primary\" onclick=\"openScheduleFromMain({ view: 'day' })\">오늘 스케줄 →\u003c/button>\n\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-row1\">\n\u003csection class=\"db-today\" id=\"dbToday\" onclick=\"openScheduleFromMain({ view: 'day' })\">\n\u003cdiv class=\"db-ring\">\u003cdiv class=\"db-skel\" style=\"margin:0;height:128px;opacity:.15\">\u003c/div>\u003c/div>\n\u003cdiv>\u003cdiv class=\"lab\">오늘 수업\u003c/div>\u003c/div>\n\u003c/section>\n\u003cdiv class=\"db-kpis\" id=\"dbKpis\">\u003c/div>\n\u003c/div>\n\u003cdiv class=\"db-row2\">\n\u003cdiv class=\"db-main\">\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\n\u003ch2>오늘 타임라인\u003cspan id=\"dbTodayCount\">\u003c/span>\u003c/h2>\n\u003cbutton type=\"button\" class=\"db-link\" onclick=\"openScheduleFromMain({ view: 'day' })\">스케줄에서 처리 ›\u003c/button>\n\u003c/div>\n\u003cdiv id=\"dbTimeline\">\u003cdiv class=\"db-skel\">\u003c/div>\u003cdiv class=\"db-skel\">\u003c/div>\u003c/div>\n\u003cdiv class=\"db-legend\">\n\u003cspan>\u003ci class=\"lg-st-done\">\u003c/i>출석\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-absent\">\u003c/i>결석\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-plan\">\u003c/i>예정\u003c/span>\n\u003cspan>\u003ci class=\"lg-st-late\">\u003c/i>시간 지남 · 미처리\u003c/span>\n\u003cem class=\"db-lg-word\">결제 전 = 칸 안 글자\u003c/em>\n\u003c/div>\n\u003c/section>\n\u003c/div>\n\u003cdiv class=\"db-side\">\n\u003csection id=\"dbBackupNote\" class=\"db-card db-bk\" hidden>\u003c/section>\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\u003ch2>스마트 알림\u003cspan id=\"dbAlertCount\">\u003c/span>\u003c/h2>\u003c/div>\n\u003cdiv id=\"dbAlertFilters\" class=\"db-filters\" hidden>\u003c/div>\n\u003cdiv id=\"dbAlerts\">\u003cdiv class=\"db-skel\">\u003c/div>\u003c/div>\n\u003c/section>\n\u003csection class=\"db-card\">\n\u003cdiv class=\"db-card-h\">\u003ch2>최근 활동\u003c/h2>\u003cspan class=\"db-link\" style=\"cursor:default\">강사 앱 포함\u003c/span>\u003c/div>\n\u003cdiv id=\"dbActivities\" class=\"db-act\">\u003cdiv class=\"db-skel\" style=\"margin:0\">\u003c/div>\u003c/div>\n\u003c/section>\n\u003c/div>\n\u003c/div>\n\u003c/div>\n\u003cscript>if (typeof window.amuseMenuLocal !== \"function\") {\nwindow.amuseMenuLocal = function (name, later) {\nvar has = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };\nvar stampOf = function () {\ntry {\nvar f = window.amuseFresh;\nvar inf = f && typeof f.info === \"function\" ? f.info(\"menu:\" + name) : null;\nvar m = inf && inf.meta && typeof inf.meta === \"object\" ? inf.meta : {};\nreturn { at: Number(inf && inf.at) || 0, meta: { today: m.d, monday: m.w, month: m.m, h: m.h } };\n} catch (e) { return { at: 0, meta: {} }; }\n};\nvar norm = function (r, at, depth) {\nif (r === null || r === undefined || r === false) return null;\nif (typeof r === \"string\") return r ? { json: r, at: Number(at) || 0, meta: {} } : null;\nif (typeof r !== \"object\" || depth > 1) return null;\nif (has(r, \"json\") || has(r, \"j\")) {\nvar inner = typeof r.j === \"string\" ? r.j : typeof r.json === \"string\" ? r.json : \"\";\nif (!inner) return null;\nvar s = stampOf();\nvar meta = {};\nObject.keys(s.meta).forEach(function (k) { if (s.meta[k] !== undefined) meta[k] = s.meta[k]; });\nObject.keys(r).forEach(function (k) { if (k !== \"json\" && k !== \"j\" && r[k] !== undefined) meta[k] = r[k]; });\nreturn { json: inner, at: Number(r.at || r.savedAt || at) || s.at, meta: meta };\n}\nvar t = Number(r.at || r.savedAt || at) || 0;\nvar wrapped = has(r, \"value\") ? \"value\" : has(r, \"data\") && (has(r, \"at\") || has(r, \"stamp\") || has(r, \"sv\") || has(r, \"fresh\")) ? \"data\" : \"\";\nif (wrapped) {\nvar v = norm(r[wrapped], t, depth + 1);\nif (v) v.meta = r;\nreturn v;\n}\nif (has(r, \"fresh\")) return null;\ntry { return { json: JSON.stringify(r), at: t, meta: {} }; } catch (e) { return null; }\n};\ntry {\nif (typeof window.amuseMenuData === \"function\") {\nvar r = window.amuseMenuData(name);\nif (r && typeof r.then === \"function\") {\nr.then(function (v) {\nvar n = norm(v, 0, 0);\nif (n && typeof later === \"function\") { try { later(n); } catch (e) {} }\n}, function () {});\nreturn null;\n}\nreturn norm(r, 0, 0);\n}\n} catch (e) {}\ntry {\nvar f = window.amuseFresh;\nif (f && typeof f.get === \"function\") {\nvar j = f.get(\"menu:\" + name);\nif (typeof j === \"string\" && j) { var s0 = stampOf(); return { json: j, at: s0.at, meta: s0.meta }; }\n}\n} catch (e) {}\nreturn null;\n};\n}\nvar DB = (function () {\nvar DAYS = [\"일\", \"월\", \"화\", \"수\", \"목\", \"금\", \"토\"];\nvar ALERT_TYPES = [\n[\"overdue\", \"출석 미처리\"],\n[\"reregister\", \"재등록\"],\n[\"unpaid\", \"결제 미등록\"],\n[\"delayover\", \"연기 2주 초과\"],\n[\"gapold\", \"사유 미입력\"],\n[\"noTeacher\", \"강사 미정\"],\n[\"unscheduled\", \"일정 없음\"],\n[\"inactive\", \"장기 미출석\"]\n];\nvar ALERT_TITLES = {\ngapold: \"수업이 없던 주는 끝난 다음 월요일에 강사 목록에 올라요. 그 뒤 한 주가 지나도 사유를 고르지 않은 주예요\"\n};\nvar ALERT_LIMIT = 6;\nvar ALERT_SHORT = { gapold: \"사유 미입력\" };\nvar DB_SCOPES = [\"students\", \"enroll\", \"sched\", \"lessons\", \"pay\", \"teachers\", \"catalog\", \"payroll\", \"gaps\", \"gapnotes\", \"~member\"];\nvar NOTE_SCOPES = [\"gapnotes\", \"sched\", \"enroll\", \"students\", \"gaps\"];\nvar DB_FRESH_MS = 90000;\nvar state = { data: null, alertFilter: \"\", showAll: false, loadedAt: null, stale: false };\nfunction $(id) { return document.getElementById(id); }\nfunction esc(v) {\nreturn String(v === undefined || v === null ? \"\" : v)\n.replace(/&/g, \"&amp;\").replace(/\u003c/g, \"&lt;\").replace(/>/g, \"&gt;\")\n.replace(/\"/g, \"&quot;\").replace(/'/g, \"&#39;\");\n}\nfunction arg(v) { return esc(JSON.stringify(String(v === undefined || v === null ? \"\" : v))); }\nfunction won(n) { return Number(n || 0).toLocaleString(\"ko-KR\"); }\nfunction byName(list, get) {\nvar copy = (list || []).slice();\nreturn window.amuseSortPeople ? window.amuseSortPeople(copy, get) : copy;\n}\nfunction pad(n) { return String(n).padStart(2, \"0\"); }\nfunction nowTime() { var d = new Date(); return pad(d.getHours()) + \":\" + pad(d.getMinutes()); }\nfunction toMin(t) { var p = String(t || \"0:0\").split(\":\"); return Number(p[0]) * 60 + Number(p[1] || 0); }\nfunction clsKind(item) {\nvar label = item && item.classLabel;\nif (label === \"그룹\") return \"grp\";\nif (label === \"1:1\" || (!label && Number((item && item.capacity) || 1) \u003c= 1)) return \"one\";\nreturn \"duo\";\n}\nfunction money(n) {\nn = Number(n || 0);\nif (Math.abs(n) >= 10000) return { v: Math.round(n / 10000).toLocaleString(\"ko-KR\"), u: \"만원\" };\nreturn { v: won(n), u: \"원\" };\n}\nfunction delta(cur, prev) {\ncur = Number(cur || 0); prev = Number(prev || 0);\nif (!prev) return cur ? \"지난달 기록 없음\" : \"지난달과 같음\";\nvar rate = (cur - prev) / Math.abs(prev) * 100;\nif (Math.abs(rate) \u003c 0.5) return \"지난달과 같음\";\nreturn '\u003cspan class=\"' + (rate > 0 ? \"db-up\" : \"db-down\") + '\">' + (rate > 0 ? \"▲\" : \"▼\") + \" \" + Math.abs(rate).toFixed(0) + \"%\u003c/span>\";\n}\nfunction load() {\nif (window.amuseOsBootWait && window.amuseOsBootWait(function () { if ($(\"dbTimeline\")) load(); })) {\nif (!window.__dbData) {\nvar early = localDash();\nif (early) { window.__dbData = early.data; window.__dbSavedAt = early.at; }\n}\nif (window.__dbData) showSaved();\nreturn;\n}\nvar bootFresh = !!window.__dbBootFresh;\nwindow.__dbBootFresh = false;\nif (bootFresh) { state.loadedAt = new Date(); state.stale = false; }\nvar bootNotes = bootFresh ? window.__dbBootNotes : null;\nwindow.__dbBootNotes = null;\nif (bootNotes) applyNotes(bootNotes);\ntakeBackup(window.__dbData);\nvar kept = !bootFresh ? freshData() : null;\nif (kept) {\nwindow.__dbData = kept.data;\nwindow.__dbSavedAt = 0;\nstate.data = kept.data;\nstate.loadedAt = new Date(kept.at);\nstate.stale = false;\nvar noteInfo = window.amuseFresh ? amuseFresh.info(\"dash:notes\") : null;\nvar keptNotes = noteInfo && new Date(noteInfo.at).toDateString() === new Date().toDateString() ? amuseFresh.hit(\"dash:notes\") : undefined;\nif (typeof keptNotes === \"string\") applyNotes(keptNotes);\nrender();\nloadBackupNote();\nif (typeof keptNotes !== \"string\") loadNotes();\nreturn;\n}\nif (!window.__dbData && !bootFresh) {\nvar local = localDash();\nif (local) { window.__dbData = local.data; window.__dbSavedAt = local.at; }\n}\nif (notes.items === null && !bootNotes && !notes.loading) localNotes();\nif (window.__dbData) {\nif (!bootFresh && window.__dbSavedAt) showSaved();\nelse { state.data = window.__dbData; render(); }\n}\nif (bootFresh && window.__dbData) { loadBackupNote(); return; }\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nvar askBackup = !backupFresh();\nvar run = google.script.run\n.withSuccessHandler(function (json) {\nif (!$(\"dbTimeline\")) return;\nvar data = JSON.parse(json || \"{}\");\ntakeBackup(data);\nwindow.__dbData = data;\nwindow.__dbSavedAt = 0;\nstate.data = data;\nstate.loadedAt = new Date();\nstate.stale = false;\nkeep(data, snap);\nrender();\nif (window.amuseOsSaveScreen) window.amuseOsSaveScreen();\nloadBackupNote();\n})\n.withFailureHandler(function (error) {\nif (!$(\"dbTimeline\")) return;\n$(\"dbTimeline\").innerHTML ='\u003cdiv class=\"db-empty\">\u003cb>불러오지 못했습니다\u003c/b>' + esc(error && error.message || error) + \"\u003c/div>\";\n});\nif (askBackup) run.getDashboardDataJson({ bk: 1 });\nelse run.getDashboardDataJson();\nloadNotes();\n}\nfunction takeBackup(data) {\nif (!data || typeof data !== \"object\" || !Object.prototype.hasOwnProperty.call(data, \"backupNotice\")) return;\nvar r = data.backupNotice;\ndelete data.backupNotice;\nif (r && typeof r === \"object\") window.__dbBackup = { r: r, at: Date.now() };\n}\nfunction backupFresh() {\nvar b = window.__dbBackup;\nreturn !!(b && b.r && Date.now() - (Number(b.at) || 0) \u003c 1800000);\n}\nfunction keep(data, snap) {\nif (!window.amuseFresh || !data || !data.today) return;\ntry { amuseFresh.put(\"dash:data\", data, DB_SCOPES, snap || undefined); } catch (e) {}\n}\nfunction slotAt(d, hm) {\nvar n = 0, seen = {};\n(d.todayTeachers || []).forEach(function (t) {\n(t.lessons || []).forEach(function (l) {\nvar e = String(l.endTime || \"\");\nif (e && !seen[e]) { seen[e] = true; if (e \u003c= hm) n++; }\n});\n});\nreturn n;\n}\nfunction freshData() {\nif (!window.amuseFresh) return null;\nvar d = amuseFresh.hit(\"dash:data\");\nvar info = amuseFresh.info(\"dash:data\");\nif (!d || !info || !d.today) return null;\nvar now = new Date();\nif (Date.now() - info.at >= DB_FRESH_MS) return null;\nvar today = now.getFullYear() + \"-\" + pad(now.getMonth() + 1) + \"-\" + pad(now.getDate());\nif (d.today !== today) return null;\nvar then = new Date(info.at);\nif (slotAt(d, pad(then.getHours()) + \":\" + pad(then.getMinutes())) !== slotAt(d, nowTime())) return null;\nreturn { data: d, at: info.at };\n}\nfunction todayYmd() {\nvar now = new Date();\nreturn now.getFullYear() + \"-\" + pad(now.getMonth() + 1) + \"-\" + pad(now.getDate());\n}\nfunction localDash() {\nif (typeof window.amuseMenuLocal !== \"function\") return null;\nvar pick = function (n) {\nif (!n) return null;\ntry {\nvar d = JSON.parse(n.json);\nif (!d || typeof d !== \"object\" || !d.today || d.today !== todayYmd()) return null;\ntakeBackup(d);\nreturn { data: d, at: Number(n.at) || Date.now() };\n} catch (e) { return null; }\n};\nreturn pick(window.amuseMenuLocal(\"dashboard\", function (n) {\nvar got = pick(n);\nif (!got || window.__dbData || state.data || !$(\"dbTimeline\")) return;\nwindow.__dbData = got.data;\nwindow.__dbSavedAt = got.at;\nshowSaved();\n}));\n}\nfunction localNotes() {\nif (typeof window.amuseMenuLocal !== \"function\") return;\nvar use = function (n) {\nif (!n || notes.items !== null) return;\nif (applyNotes(n.json) === \"error\") { notes.error = \"\"; notes.items = null; return; }\nif ($(\"dbAlerts\") && state.data) render();\n};\nuse(window.amuseMenuLocal(\"notes\", use));\n}\nfunction showSaved() {\nstate.data = window.__dbData;\nstate.loadedAt = window.__dbSavedAt ? new Date(window.__dbSavedAt) : null;\nstate.stale = true;\nrender();\n}\nfunction refresh(opts) {\nvar force = !!(opts && opts.force);\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nreturn new Promise(function (resolve) {\ngoogle.script.run\n.withSuccessHandler(function (json) {\nif (!$(\"dbTimeline\")) { resolve(); return; }\ntry {\nvar same = !!state.data && JSON.stringify(state.data) === json;\nvar data = same ? state.data : JSON.parse(json || \"{}\");\nkeep(data, snap);\nwindow.__dbData = data;\nwindow.__dbSavedAt = 0;\nstate.data = data;\nstate.loadedAt = new Date();\nstate.stale = false;\nif (!same || force) render();\nelse $(\"dbUpdated\").textContent = pad(state.loadedAt.getHours()) + \":\" + pad(state.loadedAt.getMinutes()) + \" 기준\";\nif (window.amuseOsSaveScreen) window.amuseOsSaveScreen();\nloadNotes().then(function () { resolve(); });\n} catch (e) {\nconsole.error(\"대시보드 새로고침 오류:\", e);\nresolve(\"error\");\n}\n})\n.withFailureHandler(function () { resolve(\"error\"); })\n.getDashboardDataJson();\n});\n}\nfunction render() {\nvar d = state.data;\nif (!d) return;\nvar t = new Date(d.today + \"T00:00:00\");\n$(\"dbDate\").textContent = (t.getMonth() + 1) + \"월 \" + t.getDate() + \"일 \" + DAYS[t.getDay()] + \"요일\";\n$(\"dbUpdated\").textContent = (state.loadedAt ? pad(state.loadedAt.getHours()) + \":\" + pad(state.loadedAt.getMinutes()) : nowTime()) + \" 기준\" + (state.stale ? \" · 확인 중\" : \"\");\nrenderToday(d.kpi || {}, d.todayTeachers || []);\nrenderKpis(d.kpi || {}, d.trend || []);\nrenderTimeline(d.todayTeachers || [], d.hours || { open: \"10:00\", close: \"22:00\" });\nrenderAlerts(d.alerts || [], d.alertCounts || {});\nrenderActivities(d.activities || []);\nheadMotion();\n}\nfunction headMotion() {\nvar M = window.AmuseMotion;\nif (!M || !M.claim($(\"dbKpis\"), \"page:dashboard\")) return;\nvar nums = Array.prototype.slice.call(document.querySelectorAll(\"#dbToday .db-num, #dbKpis .db-num\"));\nnums.forEach(function (el, i) { M.count(el, 120 + Math.min(i, 8) * 60); });\nvar rings = document.querySelectorAll(\"#dbToday .db-ring-done, #dbToday .db-ring-absent\");\nArray.prototype.forEach.call(rings, function (c, i) { M.draw(c, 120 + i * 80); });\nvar meter = document.querySelector(\"#dbKpis .db-meter i\");\nif (meter) M.bar(meter, 360);\n}\nfunction renderToday(k, teachers) {\nvar total = Number(k.todayTotal || 0);\nvar done = Number(k.todayDone || 0), absent = Number(k.todayAbsent || 0);\nvar C = 2 * Math.PI * 54;\nvar doneLen = total ? C * done / total : 0;\nvar absentLen = total ? C * absent / total : 0;\nvar now = nowTime(), next = null;\nteachers.forEach(function (tc) {\ntc.lessons.forEach(function (l) {\nif (l.status !== \"예정\" || l.startTime \u003c now) return;\nif (!next || l.startTime \u003c next.time) next = { time: l.startTime, names: [l.studentName], teacher: tc.name, cap: l.capacity };\nelse if (next.time === l.startTime && next.teacher === tc.name) next.names.push(l.studentName);\n});\n});\nif (next) next.names = byName(next.names);\n$(\"dbToday\").innerHTML =\n'\u003cdiv class=\"db-ring\">\u003csvg width=\"128\" height=\"128\" viewBox=\"0 0 128 128\">' +\n'\u003ccircle cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#2a2a2a\" stroke-width=\"10\"/>' +\n(doneLen ? '\u003ccircle class=\"db-ring-done\" cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#1f8f5c\" style=\"stroke:var(--st-done,#1f8f5c)\" stroke-width=\"10\" stroke-dasharray=\"' + doneLen + \" \" + C + '\"/>' : \"\") +\n(absentLen ? '\u003ccircle class=\"db-ring-absent\" cx=\"64\" cy=\"64\" r=\"54\" fill=\"none\" stroke=\"#8f949c\" style=\"stroke:var(--st-absent,#8f949c)\" stroke-width=\"10\" stroke-dasharray=\"' + absentLen + \" \" + C + '\" stroke-dashoffset=\"' + (-doneLen) + '\"/>' : \"\") +\n'\u003c/svg>\u003cdiv class=\"c\">\u003cdiv>\u003cb class=\"db-num\">' + (done + absent) + \"/\" + total + \"\u003c/b>\u003csmall>처리 완료\u003c/small>\u003c/div>\u003c/div>\u003c/div>\" +\n\"\u003cdiv>\" +\n'\u003cdiv class=\"lab\">오늘 수업' + (teachers.length ? \" · 강사 \" + teachers.length + \"명\" : \"\") + \"\u003c/div>\" +\n'\u003cdiv class=\"db-tstats\">' +\n'\u003cdiv>\u003cb class=\"db-num\">' + done + \"\u003c/b>\u003cspan>출석\u003c/span>\u003c/div>\" +\n'\u003cdiv>\u003cb class=\"db-num\">' + absent + \"\u003c/b>\u003cspan>결석\u003c/span>\u003c/div>\" +\n'\u003cdiv>\u003cb class=\"db-num\">' + (k.todayLeft || 0) + \"\u003c/b>\u003cspan>남은 수업\u003c/span>\u003c/div>\" +\n\"\u003c/div>\" +\n'\u003cdiv class=\"db-next\">' + (next\n? \"\u003cem>다음\u003c/em>\u003cb>\" + esc(next.time) + \"\u003c/b>\u003cspan>\" + esc(next.names[0] + (next.names.length > 1 ? \" 외 \" + (next.names.length - 1) + \"명\" : \"\")) + \" · \" + esc(next.teacher) + \"\u003c/span>\"\n: (total ? \"\u003cem>완료\u003c/em>\u003cspan>오늘 남은 수업이 없어요\u003c/span>\" : \"\u003cem>오늘\u003c/em>\u003cspan>잡힌 수업이 없어요\u003c/span>\")) +\n\"\u003c/div>\" +\n\"\u003c/div>\";\n}\nfunction spark(values, color) {\nif (!values.length) return \"\";\nvar max = Math.max.apply(null, values.concat([1])), min = Math.min.apply(null, values);\nvar range = max - min || 1;\nvar pts = values.map(function (v, i) {\nvar x = values.length > 1 ? i / (values.length - 1) * 160 : 80;\nvar y = 30 - (v - min) / range * 26;\nreturn [x, y];\n});\nvar last = pts[pts.length - 1];\nreturn '\u003csvg class=\"db-spark\" viewBox=\"0 0 160 34\" preserveAspectRatio=\"none\" aria-hidden=\"true\">' +\n'\u003cpolyline fill=\"none\" stroke=\"' + color + '\" stroke-width=\"2\" vector-effect=\"non-scaling-stroke\" points=\"' + pts.map(function (p) { return p[0] + \",\" + p[1]; }).join(\" \") + '\"/>' +\n'\u003ccircle cx=\"' + last[0] + '\" cy=\"' + last[1] + '\" r=\"3\" fill=\"' + color + '\"/>\u003c/svg>';\n}\nfunction renderKpis(k, trend) {\nvar sales = money(k.sales), prevSales = money(k.salesPrev), payroll = money(k.payroll);\nvar ratio = k.sales ? Math.round(Number(k.payroll || 0) / k.sales * 100) : 0;\nvar salesTrend = trend.map(function (x) { return x.sales; });\nvar lessonTrend = trend.map(function (x) { return x.lessons; });\n$(\"dbKpis\").innerHTML =\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'report\\')\" title=\"' + won(k.sales) + '원 · 결제 ' + (k.salesCount || 0) + '건\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">이번 달 매출\u003c/div>\u003cdiv class=\"val db-num\">' + sales.v + \"\u003csmall>\" + sales.u + \"\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + delta(k.sales, k.salesPrev) + \" · 지난달 \" + prevSales.v + prevSales.u + \"\u003c/div>\u003c/div>\" +\nspark(salesTrend, \"#e95a1a\") +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'students\\')\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">재원생\u003c/div>\u003cdiv class=\"val db-num\">' + (k.activeStudents || 0) + \"\u003csmall>명\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + (k.pausedStudents ? \"휴원 \" + k.pausedStudents + \"명 별도\" : \"퇴원 · 휴원 제외\") + \"\u003c/div>\u003c/div>\" +\n'\u003cdiv class=\"db-chips\">\u003cspan class=\"g\">신규 +' + (k.newStudents || 0) + '\u003c/span>\u003cspan class=\"r\">퇴원 −' + (k.retiredStudents || 0) + \"\u003c/span>\" +\n(k.pausedStudents ? \"\u003cspan>휴원 \" + k.pausedStudents + \"\u003c/span>\" : \"\") + \"\u003c/div>\" +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"openScheduleFromMain({ view: \\'week\\' })\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">이번 달 수업\u003c/div>\u003cdiv class=\"val db-num\">' + (k.lessonCount || 0) + \"\u003csmall>회\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + delta(k.lessonCount, k.lessonCountPrev) + \" · 지난달 \" + (k.lessonCountPrev || 0) + \"회\u003c/div>\u003c/div>\" +\nspark(lessonTrend, \"#17181a\") +\n\"\u003c/button>\" +\n'\u003cbutton type=\"button\" class=\"db-kpi\" onclick=\"loadPage(\\'payroll\\')\" title=\"' + won(k.payroll) + '원 (세전)\">' +\n'\u003cdiv>\u003cdiv class=\"lab\">예상 인건비\u003c/div>\u003cdiv class=\"val db-num\">' + (k.payroll === null || k.payroll === undefined ? \"-\" : payroll.v) + \"\u003csmall>\" + payroll.u + \"\u003c/small>\u003c/div>\" +\n'\u003cdiv class=\"sub\">' + (k.sales ? \"매출의 \" + ratio + \"% · 세전\" : \"세전 · 급여관리에서 확인\") + \"\u003c/div>\u003c/div>\" +\n'\u003cdiv class=\"db-meter\">\u003ci style=\"width:' + Math.min(100, ratio) + '%\">\u003c/i>\u003c/div>' +\n\"\u003c/button>\";\n}\nfunction renderTimeline(teachers, hours) {\nvar total = teachers.reduce(function (s, t) { return s + t.total; }, 0);\n$(\"dbTodayCount\").textContent = total ? total + \"건 · 강사 \" + teachers.length + \"명\" : \"\";\nif (!teachers.length) {\n$(\"dbTimeline\").innerHTML = '\u003cdiv class=\"db-empty\">\u003cb>오늘은 수업이 없어요\u003c/b>스케줄에서 새 일정을 잡을 수 있어요.\u003c/div>';\nreturn;\n}\nvar open = Math.floor(toMin(hours.open || \"10:00\") / 60) * 60;\nvar close = Math.ceil(toMin(hours.close || \"22:00\") / 60) * 60;\nteachers.forEach(function (t) {\nt.lessons.forEach(function (l) {\nopen = Math.min(open, Math.floor(toMin(l.startTime) / 60) * 60);\nclose = Math.max(close, Math.ceil(toMin(l.endTime) / 60) * 60);\n});\n});\nvar span = Math.max(60, close - open);\nvar pct = function (m) { return ((m - open) / span * 100).toFixed(3) + \"%\"; };\nvar scale = \"\", grid = \"\";\nfor (var m = open; m \u003c= close; m += 60) {\nif ((m - open) % 120 === 0 || span \u003c= 600 || m === close) scale += '\u003cspan style=\"left:' + pct(m) + '\">' + (m / 60) + \"\u003c/span>\";\ngrid += '\u003ci class=\"gl\" style=\"left:' + pct(m) + '\">\u003c/i>';\n}\nvar now = nowTime(), nowMin = toMin(now);\nvar showNow = nowMin >= open && nowMin \u003c= close;\nvar rows = teachers.map(function (t, idx) {\nvar slots = [], byKey = {};\nt.lessons.forEach(function (l) {\nvar key = Number(l.capacity || 1) > 1 ? l.startTime + \"|\" + l.classLabel : l.scheduleId;\nif (!byKey[key]) { byKey[key] = { startTime: l.startTime, endTime: l.endTime, classLabel: l.classLabel, capacity: l.capacity, items: [] }; slots.push(byKey[key]); }\nbyKey[key].items.push(l);\n});\nvar blocks = slots.map(function (s) {\nvar allDone = s.items.every(function (l) { return l.status === \"진행완료\"; });\nvar allAbsent = s.items.every(function (l) { return l.status === \"당일결석\"; });\nvar pending = s.items.some(function (l) { return l.status === \"예정\"; });\nvar cls = allDone ? \"done\" : allAbsent ? \"absent\" : (pending && s.endTime \u003c= now ? \"late\" : pending ? \"plan\" : \"done\");\nvar stText = { done: \"출석\", absent: \"결석\", plan: \"예정\", late: \"시간 지남 · 미처리\" }[cls];\ns.items = byName(s.items);\nvar first = s.items[0].studentName + (s.items.length > 1 ? \" 외 \" + (s.items.length - 1) : \"\");\nvar trial = s.items[0].trial && typeof s.items[0].trial === \"object\" ? s.items[0].trial : null;\nvar left = pct(toMin(s.startTime));\nvar width = ((toMin(s.endTime) - toMin(s.startTime)) / span * 100 - 0.4).toFixed(3) + \"%\";\nreturn '\u003cdiv class=\"db-blk ' + cls + '\" style=\"left:' + left + \";width:\" + width + ';top:11px\" title=\"' +\nesc(s.startTime + \"–\" + s.endTime + \" \" + s.items.map(function (l) { return l.studentName; }).join(\", \") + \" · \" + stText) + '\">' +\n(Number(s.capacity || 1) > 1 ? '\u003cspan class=\"tag ' + clsKind(s) + '\">' + esc(s.classLabel) + \"\u003c/span>\" : \"\") +\n(trial ? '\u003cspan class=\"tag trial\"' + (trial.kind ? ' title=\"' + esc(trial.kind) + '\"' : \"\") + '>체험\u003c/span>' : \"\") +\n(s.items.some(function (l) { return l.prepaid || l.prepaidDone; }) ? '\u003cspan class=\"tag prepaid\">결제 전\u003c/span>' : \"\") +\n'\u003cspan class=\"nm\">' + esc(first) + \"\u003c/span>\" +\n\"\u003csmall>\" + esc(s.startTime) + (cls === \"late\" ? \" 미처리\" : cls === \"absent\" ? \" 결석\" : \"\") + \"\u003c/small>\u003c/div>\";\n}).join(\"\");\nvar processed = t.done + t.absent;\nreturn '\u003cdiv class=\"db-tl-row\" onclick=\"openScheduleFromMain({ teacherId: ' + arg(t.teacherId) + \", view: 'day' })\\\">\" +\n'\u003cdiv class=\"db-tl-who\">\u003cb>' + esc(t.name) + \"\u003c/b>\u003csmall>\" + esc(t.subject || \"\") + \" · \" + processed + \"/\" + t.total + \"\u003c/small>\" +\n'\u003cdiv class=\"pg\" title=\"' + esc(\"출석 \" + t.done + \" · 결석 \" + t.absent + \" · 전체 \" + t.total) + '\">' +\n'\u003ci class=\"d\" style=\"width:' + (t.total ? t.done / t.total * 100 : 0) + '%\">\u003c/i>' +\n'\u003ci class=\"a\" style=\"width:' + (t.total ? t.absent / t.total * 100 : 0) + '%\">\u003c/i>\u003c/div>\u003c/div>' +\n'\u003cdiv class=\"db-lane\">' + grid + blocks +\n(showNow ? '\u003cdiv class=\"db-now' + (idx === 0 ? \" first\" : \"\") + '\" data-time=\"' + now + '\" style=\"left:' + pct(nowMin) + '\">\u003c/div>' : \"\") +\n\"\u003c/div>\u003c/div>\";\n}).join(\"\");\n$(\"dbTimeline\").innerHTML =\n'\u003cdiv class=\"db-tl\">\u003cdiv class=\"db-tl-hours\">\u003cdiv>\u003c/div>\u003cdiv class=\"scale\">' + scale + \"\u003c/div>\u003c/div>\" + rows + \"\u003c/div>\";\n}\nfunction alertAction(a) {\nvar types = a.types || [];\nif (types.indexOf(\"overdue\") !== -1) return { primary: true, title: \"출석 처리\", js: \"openScheduleFromMain({ view: 'day', date: \" + arg(a.date) + (a.scheduleId ? \", lessonId: \" + arg(a.scheduleId) : \"\") + \" })\" };\nif (types.indexOf(\"reregister\") !== -1 || types.indexOf(\"unpaid\") !== -1) return { primary: false, title: \"결제 등록\", js: \"openPaymentFromMain(\" + arg(a.studentId) + \", \" + arg(a.enrollmentId) + \")\" };\nif (types.indexOf(\"noTeacher\") !== -1) return { primary: false, title: \"강사 정하기\", js: \"openStudentFromMain(\" + arg(a.studentId) + \")\" };\nif (types.indexOf(\"unscheduled\") !== -1 && a.unscheduledEnrollmentId && typeof window.openScheduleAddOverlay === \"function\") {\nreturn { primary: false, title: \"일정 잡기\", js: \"openScheduleAddOverlay(\" + arg(a.unscheduledEnrollmentId) + \")\" };\n}\nreturn { primary: false, title: \"학생 보기\", js: \"openStudentFromMain(\" + arg(a.studentId) + \")\" };\n}\nfunction renderAlerts(alerts, counts) {\n$(\"dbAlertCount\").textContent = alerts.length ? alerts.length + \"명\" : \"\";\nvar filters = $(\"dbAlertFilters\");\nvar types = ALERT_TYPES.filter(function (t) { return counts[t[0]]; });\nObject.keys(counts).forEach(function (k) {\nif (!counts[k] || ALERT_TYPES.some(function (t) { return t[0] === k; })) return;\nvar tag = null;\nalerts.forEach(function (a) { (a.tags || []).forEach(function (t) { if (!tag && t.type === k) tag = t; }); });\ntypes.push([k, tag ? String(tag.label).replace(/ \\d+건$/, \"\") : k]);\n});\nvar unread = notesUnread();\nvar withNotes = unread > 0 || (Array.isArray(notes.items) && notes.items.length > 0) || state.alertFilter === \"notes\";\nif (types.length > 1 || withNotes) {\nfilters.hidden = false;\nfilters.innerHTML = [[\"\", \"전체\", alerts.length]].concat(types.map(function (t) { return [t[0], t[1], counts[t[0]]]; }))\n.map(function (f) {\nreturn '\u003cbutton type=\"button\" class=\"' + (state.alertFilter === f[0] ? \"on\" : \"\") + '\"' +\n(ALERT_TITLES[f[0]] ? ' title=\"' + esc(ALERT_TITLES[f[0]]) + '\"' : \"\") +\n' onclick=\"DB.setAlertFilter(' + arg(f[0]) + ')\">' + esc(f[1]) + \" \" + f[2] + \"\u003c/button>\";\n}).join(\"\") +\n(withNotes\n? '\u003cbutton type=\"button\" class=\"nt' + (state.alertFilter === \"notes\" ? \" on\" : \"\") + '\" onclick=\"DB.setAlertFilter(\\'notes\\')\" title=\"강사가 바꾼 사유 · 학원 휴일로 고른 주 · 지난 수업 출석 넣음 · 나중에 기록\">사유 확인' +\n(unread ? ' \u003cem class=\"db-nt-n\">' + unread + \"\u003c/em>\" : \"\") + \"\u003c/button>\"\n: \"\");\n} else {\nfilters.hidden = true;\nstate.alertFilter = \"\";\n}\nif (state.alertFilter === \"notes\") { renderNotes(); return; }\nvar mreq = state.alertFilter ? \"\" : memberReqRow() + lateRecRow() + autoRetireRow();\nif (!alerts.length) {\n$(\"dbAlerts\").innerHTML = mreq || '\u003cdiv class=\"db-allgood\">✓ 지금은 알림이 없어요\u003c/div>';\nreturn;\n}\nvar list = byName(alerts).filter(function (a) { return !state.alertFilter || (a.types || []).indexOf(state.alertFilter) !== -1; });\nvar shown = state.showAll ? list : list.slice(0, ALERT_LIMIT);\n$(\"dbAlerts\").innerHTML = mreq + shown.map(function (a) {\nvar act = alertAction(a);\nreturn '\u003cdiv class=\"db-al db-al-a\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"openStudentFromMain(' + arg(a.studentId) + ')\">' +\n\"\u003cb>\" + esc(a.title) + \"\u003c/b>\" +\nalertLines(alertItems(a)) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go' + (act.primary ? \" p\" : \"\") + '\" title=\"' + act.title + '\" aria-label=\"' + act.title + '\" onclick=\"' + act.js + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}).join(\"\") +\n(list.length > ALERT_LIMIT\n? '\u003cbutton type=\"button\" class=\"db-more\" onclick=\"DB.toggleAll()\">' + (state.showAll ? \"접기\" : \"더 보기 (\" + (list.length - ALERT_LIMIT) + \"명)\") + \"\u003c/button>\"\n: \"\");\n}\nfunction alertItems(a) {\nvar raw = [];\nif (Array.isArray(a.items) && a.items.length) {\nraw = a.items;\n} else {\nvar types = a.types || [];\nvar tags = a.tags || [];\nvar lines = String(a.meta || \"\").split(\" / \");\ntypes.forEach(function (type, i) {\nvar tag = tags[i] && tags[i].type === type ? tags[i] : null;\nvar label = tag ? String(tag.label).replace(/ \\d+건$/, \"\") : type;\nvar line = lines.length === types.length ? lines[i] : (i === 0 ? String(a.meta || \"\") : \"\");\nvar parts = lines.length === types.length && /, /.test(line) && tag && / \\d+건$/.test(tag.label) ? line.split(\", \") : [line];\nparts.forEach(function (text) { raw.push({ type: type, label: label, text: text }); });\n});\n}\nvar out = [], seen = {};\nraw.forEach(function (it) {\nif (!it || !it.type) return;\nvar text = String(it.text === undefined || it.text === null ? \"\" : it.text);\nvar k = it.type + \"\\u0001\" + text;\nif (seen[k]) return;\nseen[k] = true;\nout.push({ type: String(it.type), label: ALERT_SHORT[it.type] || String(it.label || it.type), text: text });\n});\nreturn out;\n}\nfunction alertLines(items) {\nif (!items.length) return \"\";\nreturn '\u003cul class=\"db-al-items\">' + items.map(function (it) {\nreturn '\u003cli>\u003cspan class=\"t-' + esc(it.type) + '\">' + esc(it.label) + \"\u003c/span>\" +\n'\u003cspan class=\"tx\" title=\"' + esc(it.title || it.text) + '\">' + (it.html !== undefined ? it.html : esc(it.text)) + \"\u003c/span>\u003c/li>\";\n}).join(\"\") + \"\u003c/ul>\";\n}\nfunction memberReqCount() {\nvar m = state.data && state.data.memberRequests;\nvar n = m && typeof m === \"object\" ? Number(m.count) : 0;\nreturn isFinite(n) && n > 0 ? Math.min(Math.floor(n), 9999) : 0;\n}\nfunction memberReqRow() {\nvar n = memberReqCount();\nif (!n) return \"\";\nvar go = \"DB.openMemberRequests()\";\nreturn '\u003cdiv class=\"db-al db-al-a db-al-mreq\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"' + go + '\">' +\n\"\u003cb>회원 재등록 요청 \" + n + \"\u003c/b>\" +\nalertLines([{ type: \"mreq\", label: \"회원페이지\", text: \"회원이 보낸 재등록 요청 \" + n + \"건 · 아직 확인 안 함\", title: \"회원페이지 › 요청 · 건의\" }]) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go\" title=\"요청 보기\" aria-label=\"회원 재등록 요청 보기\" onclick=\"' + go + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}\nfunction autoRetireRow() {\nvar a = state.data && state.data.autoRetired;\nvar items = a && Array.isArray(a.items) ? a.items.filter(function (x) { return x && x.studentId && x.name; }) : [];\nif (!items.length) return \"\";\nvar names = items.map(function (x) {\nreturn '\u003ca href=\"#\" class=\"db-ar-n\" onclick=\"event.preventDefault();event.stopPropagation();openStudentFromMain(' + arg(x.studentId) + ')\">' + esc(x.name) + \"\u003c/a>\";\n}).join(\" · \");\nvar plain = items.map(function (x) { return x.name; }).join(\" · \");\nreturn '\u003cdiv class=\"db-al db-al-a db-al-auto\">' +\n'\u003cdiv class=\"db-al-main\">' +\n\"\u003cb>자동 퇴원 \" + items.length + \"명\u003c/b>\" +\nalertLines([{\ntype: \"mreq\", label: \"자동 퇴원\", text: \"\",\ntitle: plain + \" — 수강권을 다 쓰고 60일 동안 결제 · 수업이 없었어요. 다시 다니면 상태를 바꿔 주세요.\",\nhtml: names + ' \u003cspan class=\"db-ar-why\">· 수강권을 다 쓰고 60일 동안 수업이 없었어요\u003c/span>'\n}]) +\n\"\u003c/div>\" +\n\"\u003c/div>\";\n}\nfunction lateRecCount() {\nif (Array.isArray(notes.items)) {\nreturn notes.items.filter(function (n) { return (n.kind === \"late\" || n.kind === \"attendance\") && !n.read && !notes.busy[n.id]; }).length +\n(Number(notes.lateExtra) || 0);\n}\nvar g = state.data && state.data.gapNotices;\nvar n = g ? Number(g.late || 0) : 0;\nreturn isFinite(n) && n > 0 ? Math.min(Math.floor(n), 9999) : 0;\n}\nfunction lateRecRow() {\nvar n = lateRecCount();\nif (!n) return \"\";\nvar go = \"DB.setAlertFilter('notes')\";\nreturn '\u003cdiv class=\"db-al db-al-a db-al-late\">' +\n'\u003cdiv class=\"db-al-main\" onclick=\"' + go + '\">' +\n\"\u003cb>지난 수업 \" + n + \"개가 나중에 기록됐어요\u003c/b>\" +\nalertLines([{ type: \"mreq\", label: \"나중에 기록\", text: \"일정 없이 한 수업을 강사가 나중에 기록했어요 · 사유 확인에서 확인해 주세요\", title: \"일정 없이 한 수업을 강사가 나중에 기록했어요\" }]) +\n\"\u003c/div>\" +\n'\u003cbutton type=\"button\" class=\"db-go\" title=\"사유 확인 보기\" aria-label=\"나중에 기록한 지난 수업 보기\" onclick=\"' + go + '\">›\u003c/button>' +\n\"\u003c/div>\";\n}\nfunction openMemberRequests() {\nif (typeof window.loadPage !== \"function\") return;\nvar before = window.MBO;\nwindow.loadPage(\"member\", document.querySelector('.menu-item[data-page=\"member\"]'));\nvar tries = 0;\n(function wait() {\nvar page = window.amuseState && window.amuseState.page;\nif (page && page !== \"member\" && page !== \"dashboard\") return;\nvar m = window.MBO;\nif (page === \"member\" && m && m !== before && typeof m.go === \"function\" && document.getElementById(\"mboPage\")) {\ntry { m.go(\"ask\", \"요청\"); } catch (e) {}\nreturn;\n}\nif (++tries \u003c 200) setTimeout(wait, 50);\n})();\n}\nfunction setAlertFilter(type) { state.alertFilter = type; state.showAll = false; render(); }\nfunction toggleAll() {\nif (state.alertFilter === \"notes\") notes.showAll = !notes.showAll;\nelse state.showAll = !state.showAll;\nrender();\n}\nvar NOTE_KIND = { change: \"사유 바뀜\", academy: \"학원 휴일로 고른 주\", attendance: \"지난 수업 출석 넣음\", late: \"나중에 기록\" };\nvar NOTE_LIMIT = 6;\nvar notes = { items: null, unread: null, showRead: false, showAll: false, busy: {}, loading: false, error: \"\" };\nfunction notesUnread() {\nif (Array.isArray(notes.items)) {\nreturn notes.items.filter(function (n) { return !n.read && !n.superseded && !notes.busy[n.id]; }).length;\n}\nif (notes.unread !== null && notes.unread !== undefined) return Number(notes.unread) || 0;\nvar g = state.data && state.data.gapNotices;\nreturn g ? Number(g.unread || 0) : 0;\n}\nfunction applyNotes(json) {\nnotes.loading = false;\nvar r = null;\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = null; }\nif (!r || r.ok === false || !Array.isArray(r.items)) {\nnotes.error = (r && r.message) || \"사유 확인을 불러오지 못했어요.\";\nreturn \"error\";\n}\nnotes.error = \"\";\nnotes.items = r.items.map(function (n) { return notes.busy[n.id] ? Object.assign({}, n, { read: true }) : n; });\nnotes.unread = Number(r.unread || 0);\nvar inList = r.items.filter(function (n) { return (n.kind === \"late\" || n.kind === \"attendance\") && !n.read; }).length;\nnotes.lateExtra = Math.max(0, (Number(r.late) || 0) - inList);\nreturn undefined;\n}\nfunction loadNotes() {\nnotes.loading = true;\nvar snap = window.amuseFresh ? amuseFresh.snap() : null;\nreturn new Promise(function (resolve) {\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar res = applyNotes(json);\nif (res !== \"error\" && window.amuseFresh) { try { amuseFresh.put(\"dash:notes\", json, NOTE_SCOPES, snap || undefined); } catch (e) {} }\nif ($(\"dbAlerts\")) render();\nresolve(res);\n})\n.withFailureHandler(function (error) {\nnotes.loading = false;\nnotes.error = String((error && error.message) || error || \"사유 확인을 불러오지 못했어요.\");\nif ($(\"dbAlerts\")) render();\nresolve(\"error\");\n})\n.getGapNoticesJson();\n});\n}\nfunction noteStamp(at) {\nvar s = String(at || \"\");\nvar m = /^(\\d{4})-(\\d{2})-(\\d{2})(?:[ T](\\d{2}):(\\d{2}))?/.exec(s);\nif (!m) return s;\nvar md = (m[1] === String(new Date().getFullYear()) ? \"\" : m[1] + \".\") + m[2] + \".\" + m[3];\nreturn md + (m[4] ? \" \" + m[4] + \":\" + m[5] : \"\");\n}\nfunction reasonChip(label, old) {\nvar t = String(label || \"\");\nif (!t) return '\u003cspan class=\"db-rc open' + (old ? \" old\" : \"\") + '\">미입력\u003c/span>';\nvar cls = /^학생/.test(t) ? \"st\" : /^강사/.test(t) ? \"tc\" : \"ac\";\nreturn '\u003cspan class=\"db-rc ' + cls + (old ? \" old\" : \"\") + '\">' + esc(t) + \"\u003c/span>\";\n}\nfunction roJosa(word) {\nvar s = String(word || \"\").replace(/[\\s)\\].·,!?~-]+$/g, \"\");\nfor (var i = s.length - 1; i >= 0; i--) {\nvar c = s.charCodeAt(i);\nif (c >= 0xAC00 && c \u003c= 0xD7A3) { var j = (c - 0xAC00) % 28; return j === 0 || j === 8 ? \"로\" : \"으로\"; }\nif (/[0-9A-Za-z]/.test(s.charAt(i))) break;\n}\nreturn \"(으)로\";\n}\nfunction noteRow(n) {\nvar busy = !!notes.busy[n.id];\nvar read = !!n.read || busy;\nvar names = (n.studentNames || []).join(\" · \");\nvar academy = n.kind === \"academy\" || (n.kind === \"change\" && n.academy === true);\nvar kindKey = academy ? \"academy\" : n.kind;\nvar kind = NOTE_KIND[kindKey] || \"확인\";\nvar swap;\nif (n.kind === \"attendance\" || n.kind === \"late\") {\nswap = '\u003cspan class=\"db-nt-att\">' + esc(n.after || (n.kind === \"late\" ? \"나중에 기록\" : \"출석 넣음\")) + \"\u003c/span>\";\n} else if (n.before) {\nswap = reasonChip(n.before, true) + '\u003cspan class=\"db-nt-arrow\" aria-label=\"에서\">→\u003c/span>' + reasonChip(n.after);\n} else {\nswap = reasonChip(n.after) + '\u003csmall class=\"db-nt-first\">처음 고름\u003c/small>';\n}\nreturn '\u003cdiv class=\"db-nt' + (read ? \" read\" : \"\") + '\" data-note=\"' + esc(n.id) + '\">' +\n'\u003cdiv class=\"db-nt-main\">' +\n'\u003cdiv class=\"db-nt-l1\">\u003cb>' + esc(names || \"-\") + '\u003c/b>\u003cspan class=\"db-nt-kind k-' + esc(kindKey) + '\">' + esc(kind) + \"\u003c/span>\" +\n(academy && n.kind === \"change\" ? '\u003cspan class=\"db-nt-kind k-change\">사유 바뀜\u003c/span>' : \"\") +\n'\u003cspan class=\"db-nt-wk\">' + esc([n.subject, n.weekLabel].filter(function (x) { return x; }).join(\" · \")) + \"\u003c/span>\u003c/div>\" +\n'\u003cdiv class=\"db-nt-swap\">' + swap + \"\u003c/div>\" +\n(n.note ? '\u003cp class=\"db-nt-why\">“' + esc(n.note) + \"”\u003c/p>\" : \"\") +\n(n.superseded ? '\u003cp class=\"db-nt-sub\">지금은 ' + esc(n.current || \"다른 사유\") + roJosa(n.current || \"다른 사유\") + \" 바뀌었어요\u003c/p>\" : \"\") +\n'\u003csmall class=\"db-nt-who\">' + esc(n.teacherName || \"\") + (n.at ? \" · \" + esc(noteStamp(n.at)) : \"\") +\n(n.read && n.readAt ? \" · 읽음 \" + esc(noteStamp(n.readAt)) : \"\") + \"\u003c/small>\" +\n\"\u003c/div>\" +\n(read\n? '\u003cspan class=\"db-nt-done\">읽음\u003c/span>'\n: '\u003cbutton type=\"button\" class=\"db-nt-read\" onclick=\"DB.readNote(' + arg(n.id) + ')\">읽음\u003c/button>') +\n\"\u003c/div>\";\n}\nfunction renderNotes() {\nvar box = $(\"dbAlerts\");\nif (!box) return;\nif (!Array.isArray(notes.items)) {\nbox.innerHTML = notes.error\n? '\u003cdiv class=\"db-empty\">\u003cb>불러오지 못했어요\u003c/b>' + esc(notes.error) + \"\u003c/div>\"\n: '\u003cdiv class=\"db-skel\">\u003c/div>';\nif (!notes.loading && !notes.error) loadNotes();\nreturn;\n}\nvar unread = notes.items.filter(function (n) { return !n.read && !notes.busy[n.id]; });\nvar read = notes.items.filter(function (n) { return n.read || notes.busy[n.id]; });\nvar list = notes.showRead ? unread.concat(read) : unread;\nvar shown = notes.showAll ? list : list.slice(0, NOTE_LIMIT);\nbox.innerHTML =\n'\u003cdiv class=\"db-nt-bar\">\u003cspan>강사가 바꾼 사유 · 학원 휴일로 고른 주 · 지난 수업 출석 넣음 · 나중에 기록 — 읽으면 흐려져요\u003c/span>' +\n(unread.length ? '\u003cbutton type=\"button\" class=\"db-nt-all\" onclick=\"DB.readAllNotes()\">모두 읽음\u003c/button>' : \"\") + \"\u003c/div>\" +\n(shown.length ? shown.map(noteRow).join(\"\") : '\u003cdiv class=\"db-allgood\">✓ 새로 볼 사유가 없어요\u003c/div>') +\n(list.length > NOTE_LIMIT\n? '\u003cbutton type=\"button\" class=\"db-more\" onclick=\"DB.toggleAll()\">' + (notes.showAll ? \"접기\" : \"더 보기 (\" + (list.length - NOTE_LIMIT) + \"건)\") + \"\u003c/button>\"\n: \"\") +\n(read.length\n? '\u003cbutton type=\"button\" class=\"db-more db-nt-toggle\" onclick=\"DB.toggleReadNotes()\">' + (notes.showRead ? \"읽은 것 숨기기\" : \"읽은 것 보기 (\" + read.length + \"건)\") + \"\u003c/button>\"\n: \"\") +\n'\u003cbutton type=\"button\" class=\"db-more db-nt-hr\" onclick=\"DB.openGapStats()\">강사관리 › 인사 · 통계에서 전체 보기 ›\u003c/button>';\n}\nfunction markRead(ids) {\nids = (ids || []).filter(function (id) { return id && !notes.busy[id]; });\nif (!ids.length) return;\nids.forEach(function (id) { notes.busy[id] = true; });\nrender();\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar r = {};\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = {}; }\nif (r.ok === false) { fail(r.message); return; }\nids.forEach(function (id) { delete notes.busy[id]; });\n(notes.items || []).forEach(function (n) { if (ids.indexOf(n.id) !== -1) n.read = true; });\nnotes.unread = null;\nif (window.amuseFresh) { amuseFresh.drop(\"dash:\"); amuseFresh.drop(\"menu:notes\"); amuseFresh.drop(\"menu:dashboard\"); }\nif ($(\"dbAlerts\")) render();\n})\n.withFailureHandler(function (error) { fail(String((error && error.message) || error || \"\")); })\n.markGapNoticesReadJson(ids);\nfunction fail(message) {\nids.forEach(function (id) { delete notes.busy[id]; });\nif (window.Toast) Toast.error(\"읽음으로 바꾸지 못했어요. \" + (message || \"\"));\nif ($(\"dbAlerts\")) render();\n}\n}\nfunction readNote(id) { markRead([String(id || \"\")]); }\nfunction readAllNotes() {\nmarkRead((notes.items || []).filter(function (n) { return !n.read; }).map(function (n) { return n.id; }));\n}\nfunction toggleReadNotes() { notes.showRead = !notes.showRead; notes.showAll = false; render(); }\nfunction openGapStats() {\nvar s = window.amuseState || (window.amuseState = {});\ns.teacherView = \"each\";\ns.teacherDetailTab = \"hr\";\ns.teacherGapFocus = true;\nvar first = (notes.items || []).filter(function (n) { return !n.read && n.teacherId; })[0];\nif (first) s.selectedTeacherId = first.teacherId;\nloadPage(\"teacher\");\n}\nvar backupNote = null;\nfunction loadBackupNote() {\nvar box = $(\"dbBackupNote\");\nif (!box || box.getAttribute(\"data-asked\") === \"1\") return;\nbox.setAttribute(\"data-asked\", \"1\");\nif (backupFresh()) {\nbackupNote = window.__dbBackup.r;\nrenderBackupNote();\nreturn;\n}\ngoogle.script.run\n.withSuccessHandler(function (json) {\nvar r = null;\ntry { r = JSON.parse(json || \"{}\"); } catch (e) { r = null; }\nbackupNote = r;\nif (r && typeof r === \"object\") window.__dbBackup = { r: r, at: Date.now() };\nrenderBackupNote();\n})\n.withFailureHandler(function () {   })\n.getBackupNoticeJson();\n}\nfunction backupStamp(ms) {\nvar n = Number(ms);\nif (!(n > 0)) return \"\";\nvar d = new Date(n);\nreturn pad(d.getMonth() + 1) + \".\" + pad(d.getDate()) + \" (\" + DAYS[d.getDay()] + \") \" + pad(d.getHours()) + \":\" + pad(d.getMinutes());\n}\nfunction renderBackupNote() {\nvar box = $(\"dbBackupNote\");\nif (!box) return;\nvar r = backupNote;\nvar url = r && typeof r.url === \"string\" && /^https:\\/\\/docs\\.google\\.com\\/spreadsheets\\/d\\/[A-Za-z0-9_-]+\\/export\\?format=xlsx$/.test(r.url) ? r.url : \"\";\nif (!r || r.show !== true || !url) { box.hidden = true; box.innerHTML = \"\"; return; }\nvar m = /^(\\d{4})-(\\d{2})$/.exec(String(r.ym || \"\"));\nbox.innerHTML =\n'\u003cdiv class=\"db-bk-in\">' +\n'\u003cdiv class=\"db-bk-tx\">' +\n\"\u003cb>이번 달 백업을 컴퓨터에 받아 두세요\u003c/b>\" +\n\"\u003csmall>\" + (m ? Number(m[2]) + \"월 · \" : \"\") + \"최신 백업 \" + esc(backupStamp(r.latestAt) || \"-\") + \"\u003c/small>\" +\n\"\u003c/div>\" +\n'\u003cdiv class=\"db-bk-act\">' +\n'\u003ca class=\"db-btn primary db-bk-get\" href=\"' + esc(url) + '\" target=\"_blank\" rel=\"noopener\">받기\u003c/a>' +\n'\u003cbutton type=\"button\" class=\"db-btn db-bk-done\" onclick=\"DB.dismissBackupNote()\">받았어요\u003c/button>' +\n\"\u003c/div>\" +\n\"\u003c/div>\";\nbox.hidden = false;\n}\nfunction dismissBackupNote() {\nvar r = backupNote;\nif (!r || !r.ym) return;\nvar ym = r.ym;\nbackupNote = null;\nvar kept = window.__dbBackup;\nwindow.__dbBackup = { r: { show: false, ym: ym }, at: Date.now() };\nrenderBackupNote();\ngoogle.script.run\n.withSuccessHandler(function () {})\n.withFailureHandler(function (error) {\nbackupNote = r;\nwindow.__dbBackup = kept;\nrenderBackupNote();\nif (window.Toast) Toast.error(\"숨기지 못했어요. \" + String((error && error.message) || error || \"\"));\n})\n.dismissBackupNoticeJson(ym);\n}\nfunction ago(ms) {\nif (!ms) return \"\";\nvar diff = (Date.now() - ms) / 60000;\nif (diff \u003c 2) return \"방금\";\nif (diff \u003c 60) return Math.floor(diff) + \"분 전\";\nif (diff \u003c 60 * 24) return Math.floor(diff / 60) + \"시간 전\";\nif (diff \u003c 60 * 48) return \"어제\";\nvar d = new Date(ms);\nreturn (d.getMonth() + 1) + \".\" + d.getDate();\n}\nfunction dotOf(feature) {\nvar f = String(feature || \"\");\nif (f.indexOf(\"결제\") !== -1 || f.indexOf(\"환불\") !== -1) return \"k\";\nif (f.indexOf(\"결석\") !== -1) return \"\";\nif (f.indexOf(\"레슨\") !== -1 || f.indexOf(\"출석\") !== -1) return \"g\";\nif (f.indexOf(\"스케줄\") !== -1 || f.indexOf(\"연기\") !== -1) return \"b\";\nreturn \"\";\n}\nfunction renderActivities(list) {\nif (!list.length) { $(\"dbActivities\").innerHTML = '\u003cdiv class=\"db-empty\" style=\"padding:16px 0\">기록이 없어요\u003c/div>'; return; }\n$(\"dbActivities\").innerHTML = list.slice(0, 6).map(function (a) {\nreturn '\u003cdiv class=\"db-ac\">\u003cspan class=\"db-dot ' + dotOf(a.feature) + '\">\u003c/span>' +\n'\u003cdiv title=\"' + esc(a.target + \" · \" + a.detail) + '\">\u003cb>' + esc(a.feature) + \"\u003c/b> \u003cspan>\" + esc(a.target) + (a.detail ? \" · \" + esc(a.detail) : \"\") + \"\u003c/span>\u003c/div>\" +\n\"\u003ctime>\" + esc(a.at ? ago(a.at) : a.when) + \"\u003c/time>\u003c/div>\";\n}).join(\"\");\n}\nreturn {\nload: load, refresh: refresh, setAlertFilter: setAlertFilter, toggleAll: toggleAll, openMemberRequests: openMemberRequests,\nreadNote: readNote, readAllNotes: readAllNotes, toggleReadNotes: toggleReadNotes, openGapStats: openGapStats,\ndismissBackupNote: dismissBackupNote\n};\n})();\nwindow.loadDashboard = DB.load;\nwindow.amusePageRefresh = DB.refresh;\nwindow.amusePageDirty = function () { return false; };\nDB.load();\u003c/script>\n";
 if (bootPageHtml) pageHtmlCache.dashboard = bootPageHtml;
 var bootDashboardData = null;
 if (bootDashboardData) {
@@ -3592,6 +3777,7 @@ window.__dbSavedAt = Number(savedScreen.at) || 0;
 osHello(savedScreen.hello);
 }
 osBoot.pending = true;
+var osBootSentAt = Date.now();
 google.script.run
 .withSuccessHandler(function(json) {
 try {
@@ -3599,7 +3785,9 @@ var b = JSON.parse(json || "{}");
 osHello(b.hello);
 if (b.backup && typeof b.backup === "object") window.__dbBackup = { r: b.backup, at: Date.now() };
 if (b.dashboard) {
-window.__dbData = JSON.parse(b.dashboard);
+var bootData = JSON.parse(b.dashboard);
+try { if (window.AmuseLive && AmuseLive.booted && b.sv) AmuseLive.booted(b.sv, osBootSentAt); } catch (e) {}
+window.__dbData = bootData;
 window.__dbBootFresh = true;
 window.__dbSavedAt = 0;
 window.__dbBootNotes = b.notes || null;
@@ -3772,9 +3960,14 @@ setTimeout(go, WARM_STEP_MS);
 return go;
 }
 function warmupData() {
+if (window.AmuseOP && window.AmusePrefetch && AmusePrefetch.boot(function() {
+window.amuseWarmStudentDetails();
+warmServerIdle();
+})) return;
 var next = warmStep(function() {
 warmServer(warmStep(function() { window.amuseWarmStudentDetails(); }));
 });
+if (window.AmusePrefetch && AmusePrefetch.boot(next)) return;
 google.script.run
 .withSuccessHandler(function(json) {
 try {
@@ -3798,6 +3991,30 @@ next();
 .withFailureHandler(function() { next(); })
 .getWarmupJson();
 }
+var WARM_IDLE_MS = 5000;
+var WARM_DAY_KEY = "amuseWarmDay";
+var lastInputAt = 0;
+["pointerdown", "keydown", "wheel"].forEach(function(t) {
+window.addEventListener(t, function() { lastInputAt = Date.now(); }, { capture: true, passive: true });
+});
+function warmServerIdle() {
+var day = "";
+try { day = amuseFresh.today(); } catch (e) { day = ""; }
+var done = "";
+try { done = window.localStorage.getItem(WARM_DAY_KEY) || ""; } catch (e) { done = ""; }
+if (day && done === day) return;
+var started = Date.now();
+var tick = function() {
+var op = window.AmuseOP;
+var quiet = !window.__swDetailLoading && Date.now() - lastInputAt >= WARM_IDLE_MS &&
+(!op || typeof op.quiet !== "function" || op.quiet(WARM_IDLE_MS));
+if (!quiet && Date.now() - started < 180000) { setTimeout(tick, 2000); return; }
+warmServer(function(ok) {
+try { if (ok && day) window.localStorage.setItem(WARM_DAY_KEY, day); } catch (e) {}
+});
+};
+setTimeout(tick, 2000);
+}
 function warmServer(then) {
 var after = typeof then === "function" ? then : function() {};
 google.script.run
@@ -3809,17 +4026,19 @@ if (w.month && w.payroll && !window.__prCache[w.month]) {
 window.__prCache[w.month] = { json: w.payroll, at: Date.now() };
 }
 } catch (e) {}
-after();
+after(true);
 })
-.withFailureHandler(function() { after(); })
+.withFailureHandler(function() { after(false); })
 .warmServerCaches();
 }
 window.amuseWarmStudentDetails = function() {
 if (window.__swDetailLoading) return;
 window.__swDetailLoading = true;
 var reqAt = Date.now();
+window.__swDetailLoadingAt = reqAt;
 var memo = window.__swDetail || {};
-var recent = window.__swDetailV && reqAt - (window.__swDetailAt || 0) < 600000;
+var longMemo = window.__amuseLongMemo === true && (window.__swDetailAt || 0) > 0;
+var recent = window.__swDetailV && (longMemo || reqAt - (window.__swDetailAt || 0) < 600000);
 var known = recent ? window.__swDetailV : "";
 var knownVersions = null;
 if (recent) {
@@ -3828,16 +4047,22 @@ Object.keys(memo).forEach(function(id) {
 if (memo[id] && memo[id].v && !memo[id]._dirty) knownVersions[id] = memo[id].v;
 });
 }
+var tellDone = function(ok) {
+try { if (window.AmusePrefetch && AmusePrefetch.detailsDone) AmusePrefetch.detailsDone(ok); } catch (e) {}
+};
 google.script.run
 .withSuccessHandler(function(json) {
 window.__swDetailLoading = false;
+var ok = false;
 try {
 if (json === '{"same":1}') {
 window.__swDetailCheckedAt = reqAt;
+ok = true;
 return;
 }
 var res = JSON.parse(json || "{}");
 if (!res.details) return;
+ok = true;
 var store = window.__swDetail || (window.__swDetail = {});
 Object.keys(res.details).forEach(function(id) {
 var d = res.details[id];
@@ -3846,12 +4071,26 @@ if (!store[id] || (store[id]._at || 0) <= reqAt) store[id] = d;
 });
 window.__swDetailV = res.v;
 if (!res.partial) window.__swDetailAt = reqAt;
+window.__swDetailCheckedAt = reqAt;
+swPackKeep();
 if (typeof window.onStudentDetailsWarm === "function") window.onStudentDetailsWarm();
-} catch (e) {}
+} catch (e) {
+ok = false;
+} finally {
+tellDone(ok);
+}
 })
-.withFailureHandler(function() { window.__swDetailLoading = false; })
+.withFailureHandler(function() { window.__swDetailLoading = false; tellDone(false); })
 .getWorkspaceStudentDetailsJson(null, known, knownVersions, !!window.__swDetailV && !recent);
 };
+var SW_PACK_SCOPES = ["students", "enroll", "pay", "lessons", "sched", "gaps"];
+function swPackKeep() {
+try {
+if (!window.amuseFresh || !window.__swDetail || !window.__swDetailV) return;
+amuseFresh.put("pack:details", { v: window.__swDetailV, at: window.__swDetailAt || 0, d: window.__swDetail },
+SW_PACK_SCOPES, undefined, { d: amuseFresh.today() });
+} catch (e) {}
+}
 function guardPageLeave(go) {
 var check = window.amusePageDirty;
 if (typeof check !== "function" || typeof window.amuseConfirmLeave !== "function") {
@@ -3887,6 +4126,7 @@ var content = document.getElementById("content");
 window.amusePageRefresh = null;
 window.amusePageDirty = null;
 if (window.AmuseLive) AmuseLive.pageChanged();
+if (window.AmusePrefetch) AmusePrefetch.pageChanged();
 amuseState.page = pageName;
 setActiveMenu(pageName, el);
 var cacheName = pageName === "today" ? "schedule" : pageName;
@@ -4305,6 +4545,7 @@ var FRESH_MS = 25000;
 var sv = {};
 var pollAt = 0;
 var lastPollOkAt = 0;
+var chAt = {};
 var store = {};
 var listeners = [];
 var off = false;
@@ -4346,23 +4587,45 @@ var m = {};
 Object.keys(sv).forEach(function(k) { m[k] = sv[k]; });
 return m;
 }
-function put(key, value, scopes, at) {
+function put(key, value, scopes, at, meta) {
 if (typeof key !== "string" || !key) return;
 var list = listOf(scopes);
-store[key] = { value: value, scopes: list, stamp: stampFrom(at && typeof at === "object" ? at : sv, list), at: Date.now() };
+store[key] = { value: value, scopes: list, stamp: stampFrom(at && typeof at === "object" ? at : sv, list), at: Date.now(),
+meta: meta && typeof meta === "object" ? meta : null };
 }
 function get(key) {
 var e = store[key];
 return e ? e.value : undefined;
 }
+function dayNow() {
+var d = new Date();
+return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function dayOk(e) {
+var m = e && e.meta;
+return !m || (!m.stale && (!m.d || m.d === dayNow()));
+}
 function hit(key) {
 var e = store[key];
-return e && ok(e.stamp, e.scopes) ? e.value : undefined;
+if (e && e.restored && window.__amuseLongMemo !== true) return undefined;
+return e && dayOk(e) && ok(e.stamp, e.scopes) ? e.value : undefined;
 }
 function info(key) {
 var e = store[key];
-return e ? { stamp: e.stamp, at: e.at, scopes: e.scopes.slice() } : null;
+return e ? { stamp: e.stamp, at: e.at, scopes: e.scopes.slice(), meta: e.meta, restored: !!e.restored } : null;
 }
+var restoreHooks = [];
+function restore(key, value, scopes, at, meta) {
+if (typeof key !== "string" || !key || store[key]) return false;
+var m = meta && typeof meta === "object" ? meta : {};
+put(key, value, scopes, m.stale ? {} : at, m);
+store[key].restored = true;
+restoreHooks.slice().forEach(function(fn) {
+try { fn(key, value, m); } catch (e) { console.error("amuseFresh.restore:", e); }
+});
+return true;
+}
+function onRestore(fn) { if (typeof fn === "function") restoreHooks.push(fn); }
 function drop(prefix) {
 var p = String(prefix || "");
 Object.keys(store).forEach(function(k) { if (!p || k.indexOf(p) === 0) delete store[k]; });
@@ -4381,12 +4644,18 @@ var changed = [];
 Object.keys(m).forEach(function(s) {
 var x = typeof m[s] === "string" ? m[s] : m[s] === null || m[s] === undefined ? "" : String(m[s]);
 if (!x) x = "-";
-if (sv[s] && sv[s] !== x) changed.push(s);
+if ((kind === "menus" || kind === "sv") && sv[s] && sv[s] !== x && older(x, sv[s])) return;
+if (kind === "sv" && x === "-" && sv[s] && sv[s] !== "-") return;
+if (sv[s] && sv[s] !== x) { changed.push(s); chAt[s] = Date.now(); }
 sv[s] = x;
 });
-if (kind === "poll" && !(Number(sentAt) > 0 && Number(sentAt) < lastWriteAt)) pollAt = lastPollOkAt = Date.now();
+if ((kind === "poll" || kind === "menus" || kind === "sv") && !(Number(sentAt) > 0 && Number(sentAt) < lastWriteAt)) {
+var okAt = kind !== "poll" && Number(sentAt) > 0 ? Math.min(Date.now(), Number(sentAt)) : Date.now();
+if (okAt > pollAt) pollAt = okAt;
+if (okAt > lastPollOkAt) lastPollOkAt = okAt;
+}
 else if (kind === "save") pollAt = lastPollOkAt;
-if (kind === "poll" && changed.length) {
+if ((kind === "poll" || kind === "menus" || kind === "sv") && changed.length) {
 listeners.slice().forEach(function(item) {
 setTimeout(function() {
 try { item.fn(changed.slice()); } catch (e) { console.error("amuseFresh.onChange:", e); }
@@ -4411,7 +4680,15 @@ return ta > 1577836800000 && tb > 1577836800000 && ta < tb;
 }
 return {
 stamp: stamp, ok: ok, snap: snap, get: get, put: put, hit: hit, info: info, drop: drop, onChange: onChange,
-seen: seen, wrote: wrote, older: older, fromV: fromV, ORDER: ORDER.slice()
+stampAt: function(map, scopes) { return map && typeof map === "object" ? stampFrom(map, listOf(scopes)) : ""; },
+seen: seen, wrote: wrote, older: older, fromV: fromV, ORDER: ORDER.slice(),
+lastWrite: function() { return lastWriteAt; },
+changedAt: function(scopes) {
+var t = lastWriteAt;
+listOf(scopes).forEach(function(s) { if ((chAt[s] || 0) > t) t = chAt[s]; });
+return t;
+},
+restore: restore, onRestore: onRestore, today: dayNow
 };
 })();
 try { if (bootDataVersion) amuseFresh.seen(null, bootDataVersion, "boot"); } catch (e) {}
@@ -4419,30 +4696,53 @@ var AmusePrefetch = window.AmusePrefetch = (function() {
 var DASH = ["students", "enroll", "sched", "lessons", "pay", "teachers", "catalog", "payroll", "gaps", "gapnotes", "~member"];
 var BOARD = ["sched", "enroll", "students", "catalog", "blocks", "lessons"];
 var MENUS = {
-dashboard: { scopes: DASH, pages: ["dashboard"] },
-notes: { scopes: ["gapnotes", "sched", "enroll", "students", "gaps"], pages: ["dashboard"] },
+dashboard: { scopes: DASH, pages: ["dashboard"], bound: "d" },
+notes: { scopes: ["gapnotes", "sched", "enroll", "students", "gaps"], pages: ["dashboard"], bound: "d" },
 students: { scopes: ["students", "enroll", "sched", "gaps", "lessons", "pay"], pages: ["students", "payment"] },
-board: { scopes: BOARD, pages: ["schedule", "today"] },
-boardWeek: { scopes: BOARD, pages: ["schedule", "today"] },
+board: { scopes: BOARD, pages: ["schedule", "today"], bound: "d" },
+boardWeek: { scopes: BOARD, pages: ["schedule", "today"], bound: "w" },
 boardConfig: { scopes: ["teachers", "catalog"], pages: ["schedule", "today"] },
 teacherStats: { scopes: ["sched", "enroll", "students", "teachers", "catalog"], pages: ["teacher"] },
-payroll: { scopes: ["sched", "teachers", "catalog", "payroll", "finance"], pages: ["payroll"] }
+payroll: { scopes: ["sched", "teachers", "catalog", "payroll", "finance"], pages: ["payroll"], bound: "m" },
+payment: { scopes: ["students", "enroll", "sched", "gaps", "lessons", "pay", "teachers", "catalog"], pages: ["payment"] },
+finance: { scopes: ["finance", "pay", "report", "payroll", "teachers"], pages: ["finance"], bound: "m" },
+report: { scopes: ["students", "enroll", "pay", "lessons", "sched", "teachers", "catalog", "report"], pages: ["report"], bound: "m" },
+consult: { scopes: ["~consultList", "~consult"], pages: ["consult"], always: true },
+member: { scopes: ["~member"], pages: ["member"], always: true },
+teacherNotices: { scopes: ["~member", "teachers"], pages: ["teacher"], always: true },
+teacherProgress: { scopes: ["lessons", "students", "sched", "teachers"], pages: ["teacher"] },
+teacherHr: { scopes: ["sched", "lessons", "enroll", "students", "teachers", "catalog", "payroll", "gaps", "gapnotes"], pages: ["teacher"], bound: "m" },
+settings: { scopes: ["catalog"], pages: ["settings"], always: true }
 };
+var BOOT = [
+["students", "board", "boardWeek", "boardConfig", "payment", "teacherStats", "payroll", "finance"],
+["report", "consult", "member", "settings", "teacherNotices", "teacherProgress", "teacherHr"]
+];
 var DELAY_MS = 1500;
 var GAP_MS = 45000;
+var RESTORE_WAIT_MS = 1500;
+var MENU_WAIT_MS = 3000;
 var lastRunAt = 0;
 var busy = false;
+var inflight = [];
+var inflightAt = 0;
 var queued = {};
 var timer = null;
-var hashes = {};
 var fails = 0;
+var booted = false;
+var bootLeft = {};
+var wants = {};
+var got = {};
 var off = false;
 try { off = window.localStorage.getItem("amuseFreshOff") === "1"; } catch (e) { off = false; }
 function want(changed) {
 if (off) return;
 var all = changed.indexOf("all") !== -1;
 Object.keys(MENUS).forEach(function(name) {
-if (all || MENUS[name].scopes.some(function(s) { return changed.indexOf(s) !== -1; })) queued[name] = true;
+if (!all && !MENUS[name].scopes.some(function(s) { return changed.indexOf(s) !== -1; })) return;
+var key = "menu:" + name;
+if (!MENUS[name].always && typeof amuseFresh.hit(key) === "string") return;
+queued[name] = true;
 });
 if (!Object.keys(queued).length) return;
 schedule();
@@ -4458,39 +4758,106 @@ if (Date.now() - lastRunAt < api.gapMs) { schedule(); return; }
 var page = (window.amuseState && amuseState.page) || "";
 var names = Object.keys(queued).filter(function(name) { return MENUS[name].pages.indexOf(page) === -1; });
 names.forEach(function(name) { delete queued[name]; });
+names = names.filter(function(name) { return MENUS[name].always || typeof amuseFresh.hit("menu:" + name) !== "string"; });
 if (!names.length) return;
-busy = true;
-lastRunAt = Date.now();
+send(names.slice(0, 8), null);
+if (names.length > 8) names.slice(8).forEach(function(name) { queued[name] = true; });
+}
+function knownOf(names) {
 var known = {};
-names.forEach(function(name) { if (hashes[name]) known[name] = hashes[name]; });
+names.forEach(function(name) {
+var key = "menu:" + name;
+var inf = amuseFresh.info(key);
+if (inf && inf.meta && typeof inf.meta.h === "string" && typeof amuseFresh.get(key) === "string") known[name] = inf.meta.h;
+});
+return known;
+}
+function send(names, done) {
+busy = true;
+inflight = names.slice();
+lastRunAt = Date.now();
+var sentAt = lastRunAt;
+inflightAt = sentAt;
+got = {};
+var finish = function(ok) {
+busy = false;
+inflight = [];
+inflightAt = 0;
+names.forEach(function(name) { delete bootLeft[name]; });
+names.forEach(function(name) { if (!got[name]) missed(name); });
+if (done) { try { done(ok); } catch (e) {} }
+if (Object.keys(queued).length) schedule();
+};
 google.script.run
 .withSuccessHandler(function(json) {
-busy = false;
 fails = 0;
-try { apply(JSON.parse(json || "{}")); } catch (e) { console.error("AMUSE OS prefetch:", e); }
-if (Object.keys(queued).length) schedule();
+try { apply(JSON.parse(json || "{}"), sentAt); } catch (e) { console.error("AMUSE OS prefetch:", e); }
+finish(true);
 })
 .withFailureHandler(function() {
-busy = false;
 if (++fails >= 2) off = true;
+finish(false);
 })
-.getOsMenusJson(names, known);
+.getOsMenusJson(names, knownOf(names));
+}
+function boot(then) {
+if (off || booted) return false;
+booted = true;
+BOOT.forEach(function(group) { group.forEach(function(name) { bootLeft[name] = true; }); });
+var after = typeof then === "function" ? then : function() {};
+var step = function(i) {
+if (i >= BOOT.length || off) {
+bootLeft = {};
+lastRunAt = 0;
+if (Object.keys(queued).length) schedule();
+after();
+return;
+}
+if (busy) { setTimeout(function() { step(i); }, 500); return; }
+send(BOOT[i], function() { setTimeout(function() { step(i + 1); }, 0); });
+};
+var started = false;
+var go = function() { if (started) return; started = true; step(0); };
+var wait = null;
+try { wait = window.AmuseOP && window.AmuseOP.restored; } catch (e) { wait = null; }
+if (wait && typeof wait.then === "function") {
+setTimeout(go, RESTORE_WAIT_MS);
+wait.then(go, go);
+} else {
+go();
+}
+return true;
 }
 function stale(svAt, scopes) {
 var now = amuseFresh.snap();
 return ["all"].concat(scopes).some(function(s) { return now[s] && svAt[s] && now[s] !== svAt[s] && amuseFresh.older(svAt[s], now[s]); });
 }
-function apply(r) {
+function apply(r, sentAt) {
 if (!r || !r.items || typeof r.items !== "object" || !r.sv) return;
+if (r.oc === 0 || r.oc === 1) window.__amuseLongMemo = r.oc === 1;
+try { amuseFresh.seen(r.sv, null, "menus", sentAt); } catch (e) {}
 var page = (window.amuseState && amuseState.page) || "";
 Object.keys(r.items).forEach(function(name) {
 var item = r.items[name];
 var spec = MENUS[name];
 if (!spec || !item || typeof item !== "object") return;
-if (item.h) hashes[name] = item.h;
-if (item.same || typeof item.j !== "string") return;
 if (stale(r.sv, spec.scopes)) return;
-amuseFresh.put("menu:" + name, item.j, spec.scopes, r.sv);
+var key = "menu:" + name;
+var meta = { d: r.today, w: r.monday, m: r.month, h: item.h };
+if (item.same) {
+var cur = amuseFresh.get(key);
+var inf = amuseFresh.info(key);
+if (typeof cur !== "string" || !inf || !inf.meta || inf.meta.h !== item.h) return;
+delete queued[name];
+amuseFresh.put(key, cur, spec.scopes, r.sv, meta);
+arrived(name, cur, true, r.sv);
+if (spec.pages.indexOf(page) === -1) { try { applyGlobal(name, cur, r); } catch (e) {} }
+return;
+}
+if (typeof item.j !== "string") return;
+delete queued[name];
+amuseFresh.put(key, item.j, spec.scopes, r.sv, meta);
+arrived(name, item.j, false, r.sv);
 if (spec.pages.indexOf(page) !== -1) return;
 try { applyGlobal(name, item.j, r); } catch (e) {}
 });
@@ -4501,11 +4868,11 @@ var d = JSON.parse(j);
 if (d && d.today) {
 window.__dbData = d;
 window.__dbSavedAt = 0;
-amuseFresh.put("dash:data", d, DASH, r.sv);
+amuseFresh.put("dash:data", d, DASH, r.sv, { d: r.today });
 if (window.amuseOsSaveScreen) window.amuseOsSaveScreen();
 }
 } else if (name === "notes") {
-amuseFresh.put("dash:notes", j, MENUS.notes.scopes, r.sv);
+amuseFresh.put("dash:notes", j, MENUS.notes.scopes, r.sv, { d: r.today });
 } else if (name === "students") {
 window.__swList = JSON.parse(j);
 window.__swListJson = j;
@@ -4521,10 +4888,134 @@ window.__sbConfig = JSON.parse(j);
 window.__teacherStatsJson = j;
 }
 }
+function sameMonday(w) {
+var d = new Date();
+d.setHours(12, 0, 0, 0);
+d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+var m = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+return w === m;
+}
+function usable(spec, meta) {
+if (!spec.bound) return true;
+if (!meta) return false;
+var today = amuseFresh.today();
+if (spec.bound === "d") return meta.d === today;
+if (spec.bound === "w") return sameMonday(meta.w);
+if (spec.bound === "m") return meta.m === today.slice(0, 7);
+return false;
+}
+function menuData(name) {
+var out = { json: undefined, fresh: false };
+if (name === "studentDetails") {
+try {
+var pack = amuseFresh.get("pack:details");
+if (pack && typeof pack === "object" && pack.d && typeof pack.d === "object") out.data = { v: pack.v, details: pack.d };
+} catch (e) {}
+return out;
+}
+try {
+var spec = Object.prototype.hasOwnProperty.call(MENUS, name) ? MENUS[name] : null;
+if (!spec) return out;
+var key = "menu:" + name;
+var v = amuseFresh.get(key);
+var inf = amuseFresh.info(key);
+if (typeof v !== "string" || !inf || !usable(spec, inf.meta)) return out;
+out.json = v;
+out.fresh = !spec.always && amuseFresh.hit(key) === v;
+} catch (e) {}
+return out;
+}
+function menuWant(name, fn) {
+if (typeof name !== "string" || typeof fn !== "function") return function() {};
+wants[name] = fn;
+if (pending(name) === "sent") {
+try {
+if (typeof window.amuseRpcPromote === "function") {
+window.amuseRpcPromote(name === "studentDetails" ? "getWorkspaceStudentDetailsJson" : "getOsMenusJson");
+}
+} catch (e) {}
+}
+return function() { if (wants[name] === fn) delete wants[name]; };
+}
+function tell(name, json, info) {
+var fn = wants[name];
+if (!fn) return;
+setTimeout(function() {
+if (wants[name] !== fn) return;
+try { fn(json, info); } catch (e) { console.error("amuseMenuWant:", e); }
+}, 0);
+}
+function arrived(name, json, same, sv) {
+got[name] = true;
+tell(name, json, { same: !!same, sv: sv && typeof sv === "object" ? sv : null });
+}
+function missed(name) {
+tell(name, undefined, { miss: true });
+}
+function pending(name) {
+if (name === "studentDetails") return window.__swDetailLoading ? "sent" : false;
+if (inflight.indexOf(name) !== -1) return "sent";
+return !!queued[name] || (!off && !!bootLeft[name]);
+}
+amuseFresh.onRestore(function(key, value, meta) {
+if (typeof key !== "string" || key.indexOf("menu:") !== 0 || typeof value !== "string") return;
+var name = key.slice(5);
+var spec = MENUS[name];
+if (!spec || !usable(spec, meta)) return;
+if (name === "students" && !window.__swList) {
+window.__swList = JSON.parse(value);
+window.__swListJson = value;
+} else if (name === "board" && meta.d) {
+window.__sbData = window.__sbData || {};
+if (!window.__sbData["day|" + meta.d]) window.__sbData["day|" + meta.d] = JSON.parse(value);
+} else if (name === "boardWeek" && meta.w) {
+window.__sbData = window.__sbData || {};
+if (!window.__sbData["week|" + meta.w]) window.__sbData["week|" + meta.w] = JSON.parse(value);
+}
+});
 amuseFresh.onChange(want, "core:prefetch");
-var api = { want: want, MENUS: MENUS, gapMs: GAP_MS };
+function sentAtOf(name) {
+if (name === "studentDetails") return window.__swDetailLoading ? Number(window.__swDetailLoadingAt) || 0 : 0;
+return inflight.indexOf(name) !== -1 ? inflightAt : 0;
+}
+window.amuseMenuData = menuData;
+window.amuseMenuWant = menuWant;
+window.amuseMenuPending = pending;
+window.amuseMenuSentAt = sentAtOf;
+window.amuseMenuWaitOk = function(name, drawn) {
+if (drawn) return true;
+var at = sentAtOf(name);
+return at > 0 && Date.now() - at >= MENU_WAIT_MS;
+};
+var api = {
+want: want, boot: boot, MENUS: MENUS, BOOT: BOOT, gapMs: GAP_MS, data: menuData,
+queuedNames: function() { return Object.keys(queued); },
+detailsDone: function(ok) {
+if (ok) tell("studentDetails", undefined, { same: true, sv: null });
+else missed("studentDetails");
+},
+pageChanged: function() {
+wants = {};
+if (Object.keys(queued).length && !timer && !busy) schedule();
+}
+};
 return api;
 })();
+amuseFresh.onRestore(function(key, value) {
+if (key !== "pack:details" || !value || typeof value !== "object" || !value.d || typeof value.d !== "object") return;
+var store = window.__swDetail || (window.__swDetail = {});
+Object.keys(value.d).forEach(function(id) {
+var d = value.d[id];
+if (!d || typeof d !== "object" || store[id]) return;
+d._at = 0;
+delete d._fs;
+store[id] = d;
+});
+if (!window.__swDetailV && typeof value.v === "string") {
+window.__swDetailV = value.v;
+window.__swDetailAt = Number(value.at) || 0;
+}
+});
 var AmuseLive = window.AmuseLive = (function() {
 var POLL_MS = 20000;
 var RETRY_MS = 4000;
@@ -4769,6 +5260,18 @@ if (checking) {
 if (Date.now() - lastTryAt < STUCK_MS) return;
 checkFailed();
 }
+var w = 0;
+try { w = amuseFresh.lastWrite(); } catch (e) { w = 0; }
+if (lastSvAt > 0) {
+var base = lastSvAt >= w ? lastSvAt : 0;
+if (lastPollOkSentAt >= w && lastPollOkSentAt > base) base = lastPollOkSentAt;
+var wait = base + POLL_MS - 1000 - Date.now();
+if (base > 0 && wait > 0) {
+clearTimeout(svTimer);
+svTimer = setTimeout(check, wait + 50);
+return;
+}
+}
 checking = true;
 lastTryAt = Date.now();
 var sentAt = lastTryAt;
@@ -4777,14 +5280,36 @@ google.script.run
 .withSuccessHandler(function(json) {
 if (seq !== checkSeq) return;
 checking = false;
-var v = null, c = "", sv = null;
-try { var dv = JSON.parse(json || "{}"); v = dv.v || null; c = dv.c || ""; sv = dv.sv && typeof dv.sv === "object" ? dv.sv : null; } catch (e) {}
-if (!v) {
+var dv = null;
+try { dv = JSON.parse(json || "{}"); } catch (e) { dv = null; }
+if (!take(dv, sentAt, "poll")) checkFailed();
+else if (sentAt > lastPollOkSentAt) lastPollOkSentAt = sentAt;
+})
+.withFailureHandler(function() {
+if (seq !== checkSeq) return;
+checking = false;
 checkFailed();
-return;
+})
+.getDataVersionJson();
 }
+var lastInfoAt = 0;
+var lastSvAt = 0;
+var lastPollOkSentAt = 0;
+var svTimer = null;
+function take(dv, sentAt, kind) {
+var v = null, c = "", sv = null;
+if (dv && typeof dv === "object") {
+v = typeof dv.v === "string" && dv.v ? dv.v : null;
+c = dv.c || "";
+sv = dv.sv && typeof dv.sv === "object" ? dv.sv : null;
+}
+if (!v) return false;
 failCount = 0;
-try { amuseFresh.seen(sv, v, "poll", sentAt); } catch (e) {}
+if (Number(sentAt) > 0 && Number(sentAt) < lastInfoAt) return true;
+if (Number(sentAt) > 0) lastInfoAt = Number(sentAt);
+if (dv.oc === 0 || dv.oc === 1) window.__amuseLongMemo = dv.oc === 1;
+(function() {
+try { amuseFresh.seen(sv, v, kind, sentAt); } catch (e) {}
 if (c && c !== lastConsultStamp) {
 var hadStamp = !!lastConsultStamp;
 lastConsultStamp = c;
@@ -4817,13 +5342,29 @@ showIdle();
 var t = token;
 var ns = nowSeq;
 run({}).then(function(done) { finishAuto(done, t, v, ns); });
-})
-.withFailureHandler(function() {
-if (seq !== checkSeq) return;
-checking = false;
-checkFailed();
-})
-.getDataVersionJson();
+})();
+return true;
+}
+function sv(x, sentAt, how) {
+var dv = x;
+if (typeof dv === "string") {
+try { dv = JSON.parse(dv); } catch (e) { dv = null; }
+}
+if (!dv || typeof dv !== "object") return;
+var at = Number(sentAt) > 0 ? Number(sentAt) : Date.now();
+if (typeof dv.v === "string" && dv.v) {
+var hadFail = failCount >= FAIL_LIMIT;
+if (take(dv, at, "sv")) {
+var w = 0;
+try { w = amuseFresh.lastWrite(); } catch (e) { w = 0; }
+if (!(how && how.write) && at >= w && at > lastSvAt) lastSvAt = at;
+if (hadFail && failCount === 0) showIdle();
+}
+return;
+}
+if (typeof dv.all === "string" && at >= lastInfoAt) {
+try { amuseFresh.seen(dv, null, "sv", at); } catch (e) {}
+}
 }
 function refreshNow() {
 if (busy) return;
@@ -4898,6 +5439,7 @@ if (pending || unapplied || busy || flying > 0) return false;
 markStale(true);
 lastVersion = v;
 shownVersion = v;
+lastInfoAt = Date.now();
 try {
 var changed = amuseFresh.seen(null, v, "save");
 if (changed.length && window.AmusePrefetch) AmusePrefetch.want(changed);
@@ -4908,6 +5450,30 @@ checking = false;
 }
 return true;
 }
+function booted(map, sentAt) {
+if (!map || typeof map !== "object") return false;
+var order = (amuseFresh && amuseFresh.ORDER) || [];
+var parts = [];
+for (var i = 0; i < order.length; i++) {
+var x = map[order[i]];
+if (typeof x !== "string" || !x) return false;
+parts.push(x);
+}
+if (!parts.length) return false;
+var v = parts.join(".");
+var at = Number(sentAt) > 0 ? Number(sentAt) : 0;
+if (at && at < lastInfoAt) return false;
+if (pending || unapplied || busy || flying > 0) return false;
+if (!window.amuseState || window.amuseState.page !== "dashboard") return false;
+if (lastVersion !== null && lastVersion !== v) {
+var a = amuseFresh.fromV(lastVersion), b = amuseFresh.fromV(v);
+markStale(!!(a && b && a.catalog === b.catalog && a.all === b.all));
+}
+lastVersion = v;
+shownVersion = v;
+if (at) lastInfoAt = at;
+return true;
+}
 setInterval(check, POLL_MS);
 document.addEventListener("visibilitychange", onBack);
 window.addEventListener("focus", onBack);
@@ -4915,7 +5481,9 @@ return {
 check: check,
 refreshNow: refreshNow,
 pageChanged: pageChanged,
-saw: saw
+saw: saw,
+sv: sv,
+booted: booted
 };
 })();
 document.addEventListener("DOMContentLoaded", function() {
@@ -4923,7 +5491,7 @@ loadPage(
 "dashboard",
 document.querySelector(".menu-item.active")
 );
-setTimeout(function() { if (window.AmuseLive) AmuseLive.check(); }, 6000);
+if (!window.AmuseOP) setTimeout(function() { if (window.AmuseLive) AmuseLive.check(); }, 6000);
 });</script>
 <div
 id="scheduleAddOverlay"
