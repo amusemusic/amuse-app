@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMUSE OS</title>
+<style>html,body{margin:0;height:100%;background:#111111;color:#b9bcc2;font:15px/1.6 "Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif}
+.box{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;text-align:center}
+a{display:inline-flex;align-items:center;height:46px;padding:0 20px;border-radius:4px;background:#e95a1a;color:#fff;font-weight:700;text-decoration:none}</style>
+</head>
+<body>
+<!-- PC OS 시험판의 "예전 화면" — 끄기 스위치(amuseOpApiOff → MOVED) · 판이 맞지 않을 때 · 시험판을 쓸 수 없을 때 지금 PC OS 로 보냄
+     지금 PC OS = amuse-app/os/legacy.html (PC 에서 ?app=os&wrap=1 감싸기 — 오늘 쓰는 그대로) · 이 파일은 그쪽으로 옮기기만 함 (저장 · 로그인 없음) -->
+<div class="box"><a id="go" href="../legacy.html">AMUSE OS 열기</a></div>
+<script>try { location.replace("../legacy.html"); } catch (e) {}</script>
+</body>
+</html>

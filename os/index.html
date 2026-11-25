@@ -41,14 +41,14 @@
     var a = window.screen ? Number(screen.width) || 0 : 0, b = window.screen ? Number(screen.height) || 0 : 0;
     return Math.max(a, b) >= 800 && Math.min(a, b) >= 480;
   }
-  var go = false, now = Date.now(), until = Number(lsGet(KEY_UNTIL)) || 0, once = null;
+  var go = false, pc = false, now = Date.now(), until = Number(lsGet(KEY_UNTIL)) || 0, once = null;
   if (until > now && until - now <= 660000) go = true; else if (until) lsDel(KEY_UNTIL);
   var q = /(?:^|[?&])view=(pc|phone|auto)(?:&|$)/.exec(location.search);
   if (q) { if (q[1] === "auto") lsDel(KEY_VIEW); else lsSet(KEY_VIEW, q[1]); }
   try { once = sessionStorage.getItem(KEY_ONCE); } catch (e) {}
   if (once !== "phone") {
     var v = lsGet(KEY_VIEW);
-    if (v === "pc" || (v !== "phone" && detectPc())) go = true;
+    if (v === "pc" || (v !== "phone" && detectPc())) go = pc = true;
   }
   if (go) {
     window.AmuseFallback = true;
@@ -57,7 +57,8 @@
     ["today2", "today2:s", "today2:p", "today2:f"].forEach(function (x) { lsDel(P + x); });
     try { sessionStorage.removeItem(P + "session"); } catch (e) {}
     document.documentElement.style.display = "none";
-    location.replace("legacy.html" + location.search);
+    // PC 는 새 PC 화면(pc/ · 자기 끄기 스위치가 켜지면 legacy.html 로 감)
+    if (pc) location.replace("pc/"); else location.replace("legacy.html" + location.search);
   }
 })();</script>
 <script>/* AMUSE OS 정식판 — 오늘 예전 화면에서 인트로를 이미 봤으면 새 화면에서 한 번 더 틀지 않음 (하루 한 번 · 예전 값은 읽기만)
