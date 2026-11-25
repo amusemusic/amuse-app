@@ -37,9 +37,9 @@
 (function () {
   "use strict";
   var EXEC = "https://script.google.com/macros/s/AKfycbzcboXtXN-ppVevFf3FHj0oS7u4uI9V5Ub7LFlLE5p0sEbSSm-CdjgIArn_uJLQ4JPo/exec";
-  var BUILD = "af41f172612c.404406eabb55";
-  var PAGES = "pages-c605c27090d1.json";
-  var READS = ["getOsBootJson","getDataVersionJson","getDashboardDataJson","getGapNoticesJson","getBackupNoticeJson","getSubjectsJson","getClassCatalogJson","getHolidaysJson","getSettingsJson","getAutoBackupJson","getAutoWarmJson","getWorkspaceStudentListJson","getWorkspaceStudentDetailJson","getStudentGapWeeksJson","getScheduleBoardJson","getScheduleBoardConfigJson","getScheduleBookableJson","getSchedulePairsJson","getTrialsJson","getLessonGapsJson","getGapStatsJson","getPaymentListJson","getPaymentStudentListJson","getPaymentTeacherListJson","getPaymentEnrollmentJson","getPaymentDetailJson","getTeacherStatsJson","getTeacherHrJson","getTeacherNoticesAdminJson","getPayrollJson","getMonthlyReportJson","getFinanceMonthJson","getConsultPageJson","getConsultPulseJson","getMemberAdminPulseJson","getOsMenusJson","getPaymentPageJson","getSettingsPageJson"];
+  var BUILD = "c520de89e0e9.03642bc12bf0";
+  var PAGES = "pages-0cfa579816a9.json";
+  var READS = ["getOsBootJson","getDataVersionJson","getDashboardDataJson","getGapNoticesJson","getBackupNoticeJson","getSubjectsJson","getClassCatalogJson","getHolidaysJson","getSettingsJson","getAutoBackupJson","getAutoWarmJson","getWorkspaceStudentListJson","getWorkspaceStudentDetailJson","getStudentGapWeeksJson","getScheduleBoardJson","getScheduleBoardConfigJson","getScheduleBookableJson","getSchedulePairsJson","getTrialsJson","getLessonGapsJson","getGapStatsJson","getPaymentListJson","getPaymentStudentListJson","getPaymentTeacherListJson","getPaymentEnrollmentJson","getPaymentDetailJson","getTeacherStatsJson","getTeacherHrJson","getTeacherNoticesAdminJson","getPayrollJson","getMonthlyReportJson","getFinanceMonthJson","getConsultPageJson","getConsultPulseJson","getMemberAdminPulseJson","getOsMenusJson","getPaymentPageJson","getSettingsPageJson","getPaymentDetailsPackJson","getTeacherProgressAllJson","getTeacherProgressAdminJson","getMemberAdminJson"];
   var API = EXEC;
   var P = "amuseOP:";
   var KEEP = P + "keep", SCREEN = P + "screen", VER = P + "ver", SUBJ = P + "subj", UNTIL = P + "fallbackUntil", NB = P + "nb";
@@ -49,16 +49,17 @@
   var BODY_MAX = 250000, BATCH_BODY_MAX = 60000, BATCH_MAX = 8;
   // 묶지 않는 읽기: 첫 데이터 · 뒤에서 받는 큰 미리 받기 · 큰 화면 읽기 (묶음은 서버에서 차례로 돌아서 · 같이 묶인 가벼운 읽기가 이것을 기다리지 않게) — 미리 받기는 시간 한도도 길게
   var NO_BATCH = ["getOsBootJson", "getOsMenusJson", "getWorkspaceStudentDetailsJson",
-    "getWorkspaceStudentListJson", "getWorkspaceStudentDetailJson", "getPaymentPageJson", "getSettingsPageJson"];
+    "getWorkspaceStudentListJson", "getWorkspaceStudentDetailJson", "getPaymentPageJson", "getSettingsPageJson", "getPaymentDetailsPackJson", "getTeacherProgressAllJson"];
   // 차례 (2026-11-24 속도 3차): 한 번에 서버로 가는 것은 CAP 개까지 · 화면 읽기가 먼저
   //   뒤에서 하는 일(미리 받기 · 데우기 · 상세 묶음 · 버전 확인)은 화면 읽기가 기다리지 않을 때만 · LOW_CAP 개까지 · 마지막 빈자리는 늘 화면 몫으로 남김
   //   뒤에서 하는 일은 한 번에 하나 (리뷰: 둘이 가 있으면 학생 목록 + 상세처럼 화면 읽기 둘 중 하나가 기다렸음)
   //   저장은 기다리지 않고 부른 차례대로 바로 (빈자리는 셈)
   var CAP = 3, LOW_CAP = 1;
-  var LOW = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getDataVersionJson", "getWarmupJson"];
-  var LONG_READS = ["getOsMenusJson", "getWorkspaceStudentDetailsJson"], LONG_READ_MS = 90000;
+  // 속도 5차: 결제 상세 묶음 · 강사 진도 묶음도 뒤 일 (화면이 기다리면 promote 로 화면 차례 · 그 밖에는 화면 읽기가 없을 때만)
+  var LOW = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getDataVersionJson", "getWarmupJson", "getPaymentDetailsPackJson", "getTeacherProgressAllJson"];
+  var LONG_READS = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "getPaymentDetailsPackJson", "getTeacherProgressAllJson"], LONG_READ_MS = 90000;
   // 큰 뒤 일 (속도 4차 · 2026-11-24): 화면 읽기 · 저장이 서버에 가 있는 동안에는 보내지 않음 (서버를 오래 잡아 지금 화면을 느리게 했음 — 실제 기록 7~13초)
-  var SOLO = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getWarmupJson"];
+  var SOLO = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getWarmupJson", "getPaymentDetailsPackJson", "getTeacherProgressAllJson"];
   var LOCAL_PAGES = ["getMainPagesBundle", "getMainPage"];
   var FALLBACK_MS = 600000, MOVED_MS = 2500, WRITE_WAIT_MS = 60000, WRITE_UNKNOWN_MS = 8000;
   var EARLY_MS = 20000;                         // 판 맞추기는 열고 이 시간 안 (또는 로그인 · 첫 데이터 답) 에만
@@ -929,7 +930,7 @@
     } catch (e) {}
   }
 })();</script>
-<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 7140971a7532b138af45318648897c60 · OS_Pages_Min.html md5 64ed02f71e6a63076dbcfb23874c6ae8) — 손으로 고치지 말 것 --><!--ossrc:af41f172612c82d68a96852bddf71679:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:404406eabb558ba671178c10446e91e2-->
+<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 e87ec848550b1fde2e9a056f855b62f0 · OS_Pages_Min.html md5 8ba1348fa08ea6771155c85fb386de65) — 손으로 고치지 말 것 --><!--ossrc:c520de89e0e9ba65ea4b5c1b904935c2:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:03642bc12bf0518c7d50a1cb9e8056b9-->
 <base target="_top">
 <style>html.osw-gate body{visibility: hidden !important;}#oswGateBlock{visibility: visible !important;position: fixed;inset: 0;z-index: 2147483647;display: flex;flex-direction: column;align-items: center;justify-content: center;gap: 16px;padding: 24px;box-sizing: border-box;text-align: center;background: var(--black, #111111);color: var(--ink-4, #b9bcc2);font: 15px/1.6 "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", "Malgun Gothic", sans-serif;word-break: keep-all;overflow-wrap: anywhere;}#oswGateBlock b{color: #ffffff;font-size: 17px;}#oswGateBlock p{margin: 0;}#oswGateBlock a{display: inline-flex;align-items: center;height: 46px;padding: 0 20px;border-radius: 4px;background: var(--orange, #e95a1a);color: #ffffff;font-weight: 700;text-decoration: none;}.osw-login{position: fixed;inset: 0;z-index: 2147483000;display: flex;align-items: center;justify-content: center;padding: 24px;background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), var(--amuse-black, #111111);color: var(--amuse-white, #ffffff);font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;}.osw-login[hidden]{display: none;}.osw-box{width: 100%;max-width: 340px;}.osw-logo{display: flex;flex-direction: column;align-items: center;}.osw-logo img{display: block;width: 230px;height: auto;}.osw-cap{margin: 20px 0 36px;color: var(--ink-3, #8f949c);font-size: 13px;font-weight: 600;text-align: center;}.osw-help{margin-top: 18px;color: var(--ink-3, #8f949c);font-size: 12px;text-align: center;}@media (max-height: 560px){.osw-logo img{width: 168px;}.osw-cap{margin: 10px 0 18px;}}.osw-field{display: block;margin-bottom: 14px;}.osw-field span{display: block;margin-bottom: 7px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 700;}.osw-field input{box-sizing: border-box;width: 100%;height: 48px;padding: 0 13px;border: 1px solid var(--black-line, #2e2e2e);border-radius: var(--r, 4px);background: var(--black-2, #1c1c1c);color: var(--amuse-white, #ffffff);font: inherit;font-size: 16px;}.osw-field input:focus{border-color: var(--amuse-primary, #e95a1a);outline: none;}.osw-keep{display: flex;align-items: center;gap: 8px;margin: 2px 0 12px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 600;cursor: pointer;user-select: none;}.osw-keep input{flex: none;width: 18px;height: 18px;margin: 0;accent-color: var(--amuse-primary, #e95a1a);cursor: pointer;}html.osw-cso .osw-keep{display: none;}.osw-err{min-height: 18px;margin: 0 0 10px;color: var(--danger, #d93025);font-size: 13px;}.osw-btn{width: 100%;height: 50px;padding: 0 18px;border: 0;border-radius: var(--r, 4px);background: var(--amuse-primary, #e95a1a);color: var(--amuse-white, #ffffff);font: inherit;font-size: 15px;font-weight: 700;cursor: pointer;}.osw-btn:hover{background: var(--amuse-primary-hover, #d24e12);}.osw-btn:disabled{opacity: .6;cursor: default;}a.osw-btn{display: flex;align-items: center;justify-content: center;text-decoration: none;}.osw-login.osw-re{z-index: 2147483002;}.osw-re-cancel{display: block;width: 100%;margin-top: 10px;padding: 10px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: 14px;cursor: pointer;}.osw-re-cancel:hover{color: var(--amuse-white, #ffffff);}.osw-intro{position: fixed;inset: 0;z-index: 2147483001;display: flex;align-items: center;justify-content: center;background: #000000;transition: background-color .7s ease, opacity .5s ease;}.osw-intro video{width: 100%;height: 100%;object-fit: cover;filter: url(#oswTint);transition: opacity .25s ease;}@media (min-width: 768px) and (hover: hover){.osw-intro video{width: min(40vw, 420px);}}.osw-intro.intro-fade video{opacity: 0;}.osw-intro.intro-out{background-color: rgba(0, 0, 0, 0);pointer-events: none;}.osw-intro-logo{pointer-events: none;}.osw-login.intro-wait #oswCap, .osw-login.intro-wait #oswForm, .osw-login.intro-wait .osw-help{opacity: 0;}.osw-login.intro-done #oswCap, .osw-login.intro-done #oswForm, .osw-login.intro-done .osw-help{animation: oswRise .5s ease both;}.osw-login.intro-done #oswForm{animation-delay: .12s;}.osw-login.intro-done .osw-help{animation-delay: .2s;}@keyframes oswRise{from{opacity: 0;transform: translateY(10px);}to{opacity: 1;transform: none;}}html.osw-cso .osw-login{background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), #111111;color: #ffffff;}html.osw-cso .osw-box{max-width: 340px;}html.osw-cso .osw-cap{margin: 20px 0 36px;color: #8f949c;}html.osw-cso .osw-help{color: #8f949c;}html.osw-cso .osw-field span{color: #cfcfcf;}html.osw-cso .osw-field input{border-color: #2e2e2e;background: #1c1c1c;color: #ffffff;}html.osw-cso .osw-field input:focus{border-color: #cfcfcf;box-shadow: none;}html.osw-cso .osw-err{color: #ff7b6b;}html.osw-cso .osw-btn{background: #e95a1a;color: #ffffff;}html.osw-cso .osw-btn:hover{background: #d24e12;}html.osw-cso .osw-btn:disabled{opacity: .45;}@media (min-width: 768px){html.osw-cso .osw-intro video{width: 475px;height: min(100%, 844px);}}.osw-acct{position: relative;display: flex;align-items: center;justify-content: space-between;gap: 8px;margin: 0 0 12px;padding: 0 2px;color: var(--ink-3, #8f949c);font-size: 12px;}.osw-acct-name{min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}.osw-link{flex-shrink: 0;padding: 4px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;cursor: pointer;}.osw-link:hover{color: var(--amuse-primary, #e95a1a);}.osw-menu{position: absolute;right: 0;bottom: 100%;z-index: 10;display: flex;flex-direction: column;min-width: 150px;margin-bottom: 6px;padding: 6px;border: 1px solid var(--black-line, #2e2e2e);border-radius: 4px;background: var(--black-2, #1c1c1c);}.osw-menu[hidden]{display: none;}.osw-menu button{padding: 9px 10px;border: 0;border-radius: var(--r, 4px);background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: var(--amuse-font-13, 13px);text-align: left;cursor: pointer;}.osw-menu button:hover{background: rgba(255, 255, 255, .08);color: var(--on-black, #ffffff);}</style>
 <div id="oswLogin" class="osw-login" hidden>
@@ -1885,7 +1886,7 @@ if (READ_RE.test(prop)) return;
 try { if (window.amuseFresh && typeof window.amuseFresh.wrote === "function") window.amuseFresh.wrote(); } catch (e) {}
 }
 var PASS = !!window.amuseOsTransport;
-var BG_RE = /^(getOsMenusJson|getWorkspaceStudentDetailsJson|warmServerCaches|getWarmupJson|getDataVersionJson)$/;
+var BG_RE = /^(getOsMenusJson|getWorkspaceStudentDetailsJson|warmServerCaches|getWarmupJson|getDataVersionJson|getPaymentDetailsPackJson|getTeacherProgressAllJson)$/;
 var BG_HOLD_MS = 15000;
 var fg = 0, bgWait = [];
 function bgRun(item) {
@@ -5010,6 +5011,7 @@ out.fresh = !spec.always && amuseFresh.hit(key) === v;
 } catch (e) {}
 return out;
 }
+var WANT_MAX_MS = 4000;
 function menuWant(name, fn) {
 if (typeof name !== "string" || typeof fn !== "function") return function() {};
 wants[name] = fn;
@@ -5019,6 +5021,11 @@ if (typeof window.amuseRpcPromote === "function") {
 window.amuseRpcPromote(name === "studentDetails" ? "getWorkspaceStudentDetailsJson" : "getOsMenusJson");
 }
 } catch (e) {}
+setTimeout(function() {
+if (wants[name] !== fn) return;
+delete wants[name];
+try { fn(undefined, { miss: true }); } catch (e) { console.error("amuseMenuWant:", e); }
+}, WANT_MAX_MS);
 }
 return function() { if (wants[name] === fn) delete wants[name]; };
 }
