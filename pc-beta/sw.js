@@ -6,8 +6,8 @@
  *   서버 화면 판이 다르면 화면이 이 워커를 새로 받게 한 뒤 다시 엶 (op_shim 판 맞추기)
  * - 저장본 이름 amuse-op-shell-<판> — 이 시험판의 예전 저장본(amuse-op-shell-*)만 지움 · 다른 앱 저장본은 건드리지 않음
  */
-var VERSION = '082c40029506';
-var PAGES = 'pages-0cfa579816a9.json';
+var VERSION = '6ed5bbfec207';
+var PAGES = 'pages-023b0fa6b704.json';
 var CACHE = 'amuse-op-shell-' + VERSION;
 var CLEAN = 'amuse-op-shell-';
 var ICON = '../icons/icon-192.png';
