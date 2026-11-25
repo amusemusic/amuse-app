@@ -19,6 +19,8 @@
    - 읽기(READS): 같은 순간(같은 틱)에 부른 같은 토큰의 읽기는 한 번(batch · 최대 8개)으로 묶음 · 첫 데이터(getOsBootJson)는 묶지 않음
             시간 한도 30초 + 묶음 한 칸마다 10초 · 전송 실패면 한 번만 조용히 다시 · 시간 한도로 끊은 것은 다시 보내지 않음
             큰 화면 읽기(학생 목록 · 상세 · 결제 · 설정 묶음)도 묶지 않음 · 한 번에 3개까지 · 화면 읽기가 먼저, 뒤에서 하는 일은 그 뒤 (속도 3차)
+            메뉴 미리 받기 · 학생 상세 묶음은 화면 읽기 · 저장이 하나도 가 있지 않을 때만 (속도 4차)
+   - 초시계: 답의 tm (서버 안 시간 s · 불러오기 l) 도 속도 기록에 (op.<이름> 줄 · 설정 › 속도 기록 "서버" · "대기")
    - 답마다 함께 온 데이터 버전(sv)은 Main_View AmuseLive.sv 로 (버전 확인 한 번처럼 · 그 사이 20초 확인은 쉼)
    - 그 밖(쓰기 · 미리보기 · 큰 답) · 로그인 · 로그아웃 · 비밀번호 한 번 더: 늘 하나씩 · 다시 보내지 않음 · 시간 한도 없음 (google.script.run 처럼)
             보낸 뒤 연결이 끊기면 "네트워크 오류 — 처리 여부를 확인하려면 새로고침하세요"
@@ -35,8 +37,8 @@
 (function () {
   "use strict";
   var EXEC = "https://script.google.com/macros/s/AKfycbzcboXtXN-ppVevFf3FHj0oS7u4uI9V5Ub7LFlLE5p0sEbSSm-CdjgIArn_uJLQ4JPo/exec";
-  var BUILD = "ab08265dba5e.5b836040ae3a";
-  var PAGES = "pages-163014882ebf.json";
+  var BUILD = "af41f172612c.404406eabb55";
+  var PAGES = "pages-c605c27090d1.json";
   var READS = ["getOsBootJson","getDataVersionJson","getDashboardDataJson","getGapNoticesJson","getBackupNoticeJson","getSubjectsJson","getClassCatalogJson","getHolidaysJson","getSettingsJson","getAutoBackupJson","getAutoWarmJson","getWorkspaceStudentListJson","getWorkspaceStudentDetailJson","getStudentGapWeeksJson","getScheduleBoardJson","getScheduleBoardConfigJson","getScheduleBookableJson","getSchedulePairsJson","getTrialsJson","getLessonGapsJson","getGapStatsJson","getPaymentListJson","getPaymentStudentListJson","getPaymentTeacherListJson","getPaymentEnrollmentJson","getPaymentDetailJson","getTeacherStatsJson","getTeacherHrJson","getTeacherNoticesAdminJson","getPayrollJson","getMonthlyReportJson","getFinanceMonthJson","getConsultPageJson","getConsultPulseJson","getMemberAdminPulseJson","getOsMenusJson","getPaymentPageJson","getSettingsPageJson"];
   var API = EXEC;
   var P = "amuseOP:";
@@ -55,6 +57,8 @@
   var CAP = 3, LOW_CAP = 1;
   var LOW = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getDataVersionJson", "getWarmupJson"];
   var LONG_READS = ["getOsMenusJson", "getWorkspaceStudentDetailsJson"], LONG_READ_MS = 90000;
+  // 큰 뒤 일 (속도 4차 · 2026-11-24): 화면 읽기 · 저장이 서버에 가 있는 동안에는 보내지 않음 (서버를 오래 잡아 지금 화면을 느리게 했음 — 실제 기록 7~13초)
+  var SOLO = ["getOsMenusJson", "getWorkspaceStudentDetailsJson", "warmServerCaches", "getWarmupJson"];
   var LOCAL_PAGES = ["getMainPagesBundle", "getMainPage"];
   var FALLBACK_MS = 600000, MOVED_MS = 2500, WRITE_WAIT_MS = 60000, WRITE_UNKNOWN_MS = 8000;
   var EARLY_MS = 20000;                         // 판 맞추기는 열고 이 시간 안 (또는 로그인 · 첫 데이터 답) 에만
@@ -111,14 +115,24 @@
     if (body.k === "batch") return "batch";
     return body.k === "login" || body.k === "logout" || body.k === "ping" || body.k === "reauth" ? body.k : "other";
   }
-  function timeMark(name, t0, len, res, n) {
-    var ms = Date.now() - t0;
-    stat.times.push({ fn: name, ms: ms, len: len, res: res });
+  /** 답의 "tm" (127 · 속도 4차): s = 서버 doPost 안 시간 · l = 스크립트 불러온 뒤 doPost 까지 (모르면 null) — 숫자만 */
+  function tmOf(obj) {
+    var tm = plain(obj) && plain(obj.tm) ? obj.tm : null;
+    var num = function (v) { return typeof v === "number" && isFinite(v) && v >= 0 ? Math.round(v) : null; };
+    return { s: tm ? num(tm.s) : null, l: tm ? num(tm.l) : null };
+  }
+  function timeMark(name, t0, len, res, n, obj) {
+    var ms = Date.now() - t0, tm = tmOf(obj);
+    var row = { fn: name, ms: ms, len: len, res: res };
+    var extra = { len: len, n: n || 1 };
+    if (tm.s !== null) { row.s = tm.s; extra.s = tm.s; }
+    if (tm.l !== null) { row.l = tm.l; extra.l = tm.l; }
+    stat.times.push(row);
     if (stat.times.length > 80) stat.times.shift();
-    try { if (typeof window.amuseTiming === "function") window.amuseTiming("op." + name, ms, { len: len, n: n || 1 }); } catch (e) {}
+    try { if (typeof window.amuseTiming === "function") window.amuseTiming("op." + name, ms, extra); } catch (e) {}
   }
 
-  /** POST 한 번 → Promise(답 글자) · ms 0 = 끊지 않음 */
+  /** POST 한 번 → Promise(답 { o: 읽은 JSON (못 읽으면 null) }) · ms 0 = 끊지 않음 · 답은 여기서 한 번만 읽음 (tm 기록 · classify 가 같이 씀) */
   function post(body, ms, keepalive) {
     stat.posts++;
     var t0 = Date.now(), tName = timeName(body), n = body.k === "batch" ? body.c.length : 1;
@@ -144,7 +158,13 @@
       clearTimeout(timer);
       if (ctl) timer = setTimeout(cut, Math.max(ms, BODY_MS));
       return res.text();
-    }).then(function (t) { clearTimeout(timer); timeMark(tName, t0, String(t).length, "ok", n); return t; }, function (e) {
+    }).then(function (t) {
+      clearTimeout(timer);
+      var obj = null;
+      try { obj = JSON.parse(t); } catch (e) { obj = null; }
+      timeMark(tName, t0, String(t).length, "ok", n, obj);
+      return { o: obj };
+    }, function (e) {
       clearTimeout(timer);
       timeMark(tName, t0, 0, timedOut ? "timeout" : "net", n);
       var x = e instanceof Error ? e : new Error(String(e));
@@ -153,10 +173,9 @@
     });
   }
 
-  /** 답 글자 → { kind: ok, items } | bad | fail | moved  (early: 판 맞추기를 볼 답) */
-  function classify(text, n, early) {
-    var obj = null;
-    try { obj = JSON.parse(text); } catch (e) { obj = null; }
+  /** 답 (post 가 읽은 { o }) → { kind: ok, items } | bad | fail | moved  (early: 판 맞추기를 볼 답) */
+  function classify(reply, n, early) {
+    var obj = reply && typeof reply === "object" ? reply.o : null;
     if (!plain(obj) || typeof obj.amuseApi !== "string") return { kind: "fail" };
     if (obj.amuseApi === "MOVED") { moved(); return { kind: "moved" }; }
     if (obj.amuseApi === "BAD") return { kind: "bad" };
@@ -333,11 +352,20 @@
     if (moving) return;
     while (hi.length && busyHi + busyLo < CAP) takeHi();
     while (!hi.length && lo.length && busyLo < LOW_CAP && busyHi + busyLo < CAP - 1) {
-      var c = lo.shift();
+      var k = lowPick();
+      if (k < 0) break;
+      var c = lo.splice(k, 1)[0];
       stat.low++;
       hold([c], true);
       sendOne(c);
     }
+  }
+  /** 보낼 뒤 일 (차례대로) — 큰 뒤 일(SOLO)은 화면 호출(읽기 · 저장)이 서버에 하나도 가 있지 않을 때만 (속도 4차) · 없으면 -1 */
+  function lowPick() {
+    for (var i = 0; i < lo.length; i++) {
+      if (busyHi === 0 || !has(SOLO, lo[i].fn)) return i;
+    }
+    return -1;
   }
   /** 화면 읽기 하나 (같은 토큰의 묶을 수 있는 읽기는 BATCH_MAX 개까지 같이 — 큰 읽기 · 쓰기는 혼자) */
   function takeHi() {
@@ -901,7 +929,7 @@
     } catch (e) {}
   }
 })();</script>
-<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 4326488628c643974621de8e49ea7b7e · OS_Pages_Min.html md5 5e29e8f6cb1ce0f35c3dba15d1ef979a) — 손으로 고치지 말 것 --><!--ossrc:ab08265dba5eda038c4a33387a7869b0:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:5b836040ae3a06e1e64c209a0b788271-->
+<!-- PC OS 시험판: op_build.js 로 만든 파일 (원본 OS_Min.html md5 7140971a7532b138af45318648897c60 · OS_Pages_Min.html md5 64ed02f71e6a63076dbcfb23874c6ae8) — 손으로 고치지 말 것 --><!--ossrc:af41f172612c82d68a96852bddf71679:Main_View,01_DesignSystem,02_UIKit,03_Overlay,04_Toast,05_Loading,10_Dashboard_CSS,10_Dashboard_View,10_Dashboard_JS,OS_Web_Gate,TeacherApp_LogoFull--><!--oppr:404406eabb558ba671178c10446e91e2-->
 <base target="_top">
 <style>html.osw-gate body{visibility: hidden !important;}#oswGateBlock{visibility: visible !important;position: fixed;inset: 0;z-index: 2147483647;display: flex;flex-direction: column;align-items: center;justify-content: center;gap: 16px;padding: 24px;box-sizing: border-box;text-align: center;background: var(--black, #111111);color: var(--ink-4, #b9bcc2);font: 15px/1.6 "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", "Malgun Gothic", sans-serif;word-break: keep-all;overflow-wrap: anywhere;}#oswGateBlock b{color: #ffffff;font-size: 17px;}#oswGateBlock p{margin: 0;}#oswGateBlock a{display: inline-flex;align-items: center;height: 46px;padding: 0 20px;border-radius: 4px;background: var(--orange, #e95a1a);color: #ffffff;font-weight: 700;text-decoration: none;}.osw-login{position: fixed;inset: 0;z-index: 2147483000;display: flex;align-items: center;justify-content: center;padding: 24px;background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), var(--amuse-black, #111111);color: var(--amuse-white, #ffffff);font-family: "Pretendard Variable", Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;}.osw-login[hidden]{display: none;}.osw-box{width: 100%;max-width: 340px;}.osw-logo{display: flex;flex-direction: column;align-items: center;}.osw-logo img{display: block;width: 230px;height: auto;}.osw-cap{margin: 20px 0 36px;color: var(--ink-3, #8f949c);font-size: 13px;font-weight: 600;text-align: center;}.osw-help{margin-top: 18px;color: var(--ink-3, #8f949c);font-size: 12px;text-align: center;}@media (max-height: 560px){.osw-logo img{width: 168px;}.osw-cap{margin: 10px 0 18px;}}.osw-field{display: block;margin-bottom: 14px;}.osw-field span{display: block;margin-bottom: 7px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 700;}.osw-field input{box-sizing: border-box;width: 100%;height: 48px;padding: 0 13px;border: 1px solid var(--black-line, #2e2e2e);border-radius: var(--r, 4px);background: var(--black-2, #1c1c1c);color: var(--amuse-white, #ffffff);font: inherit;font-size: 16px;}.osw-field input:focus{border-color: var(--amuse-primary, #e95a1a);outline: none;}.osw-keep{display: flex;align-items: center;gap: 8px;margin: 2px 0 12px;color: var(--on-black-2, #cfcfcf);font-size: 13px;font-weight: 600;cursor: pointer;user-select: none;}.osw-keep input{flex: none;width: 18px;height: 18px;margin: 0;accent-color: var(--amuse-primary, #e95a1a);cursor: pointer;}html.osw-cso .osw-keep{display: none;}.osw-err{min-height: 18px;margin: 0 0 10px;color: var(--danger, #d93025);font-size: 13px;}.osw-btn{width: 100%;height: 50px;padding: 0 18px;border: 0;border-radius: var(--r, 4px);background: var(--amuse-primary, #e95a1a);color: var(--amuse-white, #ffffff);font: inherit;font-size: 15px;font-weight: 700;cursor: pointer;}.osw-btn:hover{background: var(--amuse-primary-hover, #d24e12);}.osw-btn:disabled{opacity: .6;cursor: default;}a.osw-btn{display: flex;align-items: center;justify-content: center;text-decoration: none;}.osw-login.osw-re{z-index: 2147483002;}.osw-re-cancel{display: block;width: 100%;margin-top: 10px;padding: 10px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: 14px;cursor: pointer;}.osw-re-cancel:hover{color: var(--amuse-white, #ffffff);}.osw-intro{position: fixed;inset: 0;z-index: 2147483001;display: flex;align-items: center;justify-content: center;background: #000000;transition: background-color .7s ease, opacity .5s ease;}.osw-intro video{width: 100%;height: 100%;object-fit: cover;filter: url(#oswTint);transition: opacity .25s ease;}@media (min-width: 768px) and (hover: hover){.osw-intro video{width: min(40vw, 420px);}}.osw-intro.intro-fade video{opacity: 0;}.osw-intro.intro-out{background-color: rgba(0, 0, 0, 0);pointer-events: none;}.osw-intro-logo{pointer-events: none;}.osw-login.intro-wait #oswCap, .osw-login.intro-wait #oswForm, .osw-login.intro-wait .osw-help{opacity: 0;}.osw-login.intro-done #oswCap, .osw-login.intro-done #oswForm, .osw-login.intro-done .osw-help{animation: oswRise .5s ease both;}.osw-login.intro-done #oswForm{animation-delay: .12s;}.osw-login.intro-done .osw-help{animation-delay: .2s;}@keyframes oswRise{from{opacity: 0;transform: translateY(10px);}to{opacity: 1;transform: none;}}html.osw-cso .osw-login{background: radial-gradient(120% 55% at 50% 0%, rgba(233, 90, 26, .16), transparent 60%), #111111;color: #ffffff;}html.osw-cso .osw-box{max-width: 340px;}html.osw-cso .osw-cap{margin: 20px 0 36px;color: #8f949c;}html.osw-cso .osw-help{color: #8f949c;}html.osw-cso .osw-field span{color: #cfcfcf;}html.osw-cso .osw-field input{border-color: #2e2e2e;background: #1c1c1c;color: #ffffff;}html.osw-cso .osw-field input:focus{border-color: #cfcfcf;box-shadow: none;}html.osw-cso .osw-err{color: #ff7b6b;}html.osw-cso .osw-btn{background: #e95a1a;color: #ffffff;}html.osw-cso .osw-btn:hover{background: #d24e12;}html.osw-cso .osw-btn:disabled{opacity: .45;}@media (min-width: 768px){html.osw-cso .osw-intro video{width: 475px;height: min(100%, 844px);}}.osw-acct{position: relative;display: flex;align-items: center;justify-content: space-between;gap: 8px;margin: 0 0 12px;padding: 0 2px;color: var(--ink-3, #8f949c);font-size: 12px;}.osw-acct-name{min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}.osw-link{flex-shrink: 0;padding: 4px 0;border: 0;background: none;color: var(--on-black-2, #cfcfcf);font: inherit;cursor: pointer;}.osw-link:hover{color: var(--amuse-primary, #e95a1a);}.osw-menu{position: absolute;right: 0;bottom: 100%;z-index: 10;display: flex;flex-direction: column;min-width: 150px;margin-bottom: 6px;padding: 6px;border: 1px solid var(--black-line, #2e2e2e);border-radius: 4px;background: var(--black-2, #1c1c1c);}.osw-menu[hidden]{display: none;}.osw-menu button{padding: 9px 10px;border: 0;border-radius: var(--r, 4px);background: none;color: var(--on-black-2, #cfcfcf);font: inherit;font-size: var(--amuse-font-13, 13px);text-align: left;cursor: pointer;}.osw-menu button:hover{background: rgba(255, 255, 255, .08);color: var(--on-black, #ffffff);}</style>
 <div id="oswLogin" class="osw-login" hidden>
@@ -1817,16 +1845,35 @@ try { window.sessionStorage.removeItem(KEY); } catch (e) {}
 timing.stats = function() {
 var by = {};
 list.forEach(function(x) {
-var g = by[x.n] || (by[x.n] = { n: x.n, ms: [], fail: 0 });
+var g = by[x.n] || (by[x.n] = { n: x.n, ms: [], fail: 0, srv: [], wait: [], load: [] });
 g.ms.push(x.ms);
 if (x.ok === 0) g.fail++;
+if (typeof x.s === "number" && x.s >= 0) {
+g.srv.push(x.s);
+g.wait.push(Math.max(0, x.ms - x.s));
+}
+if (typeof x.l === "number" && x.l >= 0) g.load.push(x.l);
 });
+var med = function(a) {
+if (!a.length) return null;
+var s = a.slice().sort(function(x, y) { return x - y; });
+return s[Math.max(0, Math.ceil(0.5 * s.length) - 1)];
+};
 return Object.keys(by).map(function(n) {
 var g = by[n];
 var s = g.ms.slice().sort(function(a, b) { return a - b; });
 var at = function(p) { return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))]; };
-return { n: n, count: s.length, fail: g.fail, med: at(0.5), p90: at(0.9), max: s[s.length - 1] };
+return { n: n, count: s.length, fail: g.fail, med: at(0.5), p90: at(0.9), max: s[s.length - 1], srv: med(g.srv), wait: med(g.wait), load: med(g.load) };
 }).sort(function(a, b) { return b.count - a.count || (a.n < b.n ? -1 : 1); });
+};
+var fgEndAt = 0;
+window.amuseRpcQuiet = function(ms) {
+var wait = Number(ms) || 0;
+try {
+var op = window.AmuseOP;
+if (window.amuseOsTransport && op && typeof op.quiet === "function") return !!op.quiet(wait);
+} catch (e) {}
+return !(fg > 0) && Date.now() - fgEndAt >= wait;
 };
 var g = window.google && window.google.script;
 if (!g || !g.run || typeof Proxy !== "function") return;
@@ -1885,6 +1932,7 @@ var finish = function() {
 if (!counted) return;
 counted = false;
 fg = Math.max(0, fg - 1);
+fgEndAt = Date.now();
 if (!fg && bgWait.length) setTimeout(bgDrain, 0);
 };
 var go = function() {
@@ -3960,14 +4008,10 @@ setTimeout(go, WARM_STEP_MS);
 return go;
 }
 function warmupData() {
-if (window.AmuseOP && window.AmusePrefetch && AmusePrefetch.boot(function() {
-window.amuseWarmStudentDetails();
-warmServerIdle();
+if (window.AmusePrefetch && AmusePrefetch.boot(function() {
+warmServerIdle(!window.AmuseOP);
 })) return;
-var next = warmStep(function() {
-warmServer(warmStep(function() { window.amuseWarmStudentDetails(); }));
-});
-if (window.AmusePrefetch && AmusePrefetch.boot(next)) return;
+var next = warmStep(function() { warmServer(); });
 google.script.run
 .withSuccessHandler(function(json) {
 try {
@@ -3997,20 +4041,20 @@ var lastInputAt = 0;
 ["pointerdown", "keydown", "wheel"].forEach(function(t) {
 window.addEventListener(t, function() { lastInputAt = Date.now(); }, { capture: true, passive: true });
 });
-function warmServerIdle() {
+function warmServerIdle(everyOpen) {
 var day = "";
 try { day = amuseFresh.today(); } catch (e) { day = ""; }
 var done = "";
 try { done = window.localStorage.getItem(WARM_DAY_KEY) || ""; } catch (e) { done = ""; }
-if (day && done === day) return;
+if (!everyOpen && day && done === day) return;
 var started = Date.now();
 var tick = function() {
-var op = window.AmuseOP;
 var quiet = !window.__swDetailLoading && Date.now() - lastInputAt >= WARM_IDLE_MS &&
-(!op || typeof op.quiet !== "function" || op.quiet(WARM_IDLE_MS));
+(typeof window.amuseRpcQuiet !== "function" || window.amuseRpcQuiet(WARM_IDLE_MS)) &&
+!(window.AmusePrefetch && AmusePrefetch.isBusy && AmusePrefetch.isBusy());
 if (!quiet && Date.now() - started < 180000) { setTimeout(tick, 2000); return; }
 warmServer(function(ok) {
-try { if (ok && day) window.localStorage.setItem(WARM_DAY_KEY, day); } catch (e) {}
+try { if (!everyOpen && ok && day) window.localStorage.setItem(WARM_DAY_KEY, day); } catch (e) {}
 });
 };
 setTimeout(tick, 2000);
@@ -4031,7 +4075,29 @@ after(true);
 .withFailureHandler(function() { after(false); })
 .warmServerCaches();
 }
+var PACK_IDLE_MS = 1000;
+var packTimer = 0;
+function packPageOpen() {
+return !!(window.amuseState && amuseState.page === "students") && !!document.getElementById("studentListBox");
+}
+function packIdle() {
+if (document.hidden) return false;
+if (window.AmusePrefetch && AmusePrefetch.isBusy && AmusePrefetch.isBusy()) return false;
+return typeof window.amuseRpcQuiet !== "function" || window.amuseRpcQuiet(PACK_IDLE_MS);
+}
+function packTry() {
+packTimer = 0;
+window.__swDetailWaiting = false;
+if (window.__swDetailLoading || !packPageOpen()) return;
+if (!packIdle()) { window.__swDetailWaiting = true; packTimer = setTimeout(packTry, 400); return; }
+packSend();
+}
 window.amuseWarmStudentDetails = function() {
+if (window.__swDetailLoading || packTimer) return;
+window.__swDetailWaiting = true;
+packTimer = setTimeout(packTry, 0);
+};
+function packSend() {
 if (window.__swDetailLoading) return;
 window.__swDetailLoading = true;
 var reqAt = Date.now();
@@ -4082,7 +4148,7 @@ tellDone(ok);
 })
 .withFailureHandler(function() { window.__swDetailLoading = false; tellDone(false); })
 .getWorkspaceStudentDetailsJson(null, known, knownVersions, !!window.__swDetailV && !recent);
-};
+}
 var SW_PACK_SCOPES = ["students", "enroll", "pay", "lessons", "sched", "gaps"];
 function swPackKeep() {
 try {
@@ -4715,9 +4781,15 @@ teacherHr: { scopes: ["sched", "lessons", "enroll", "students", "teachers", "cat
 settings: { scopes: ["catalog"], pages: ["settings"], always: true }
 };
 var BOOT = [
-["students", "board", "boardWeek", "boardConfig", "payment", "teacherStats", "payroll", "finance"],
-["report", "consult", "member", "settings", "teacherNotices", "teacherProgress", "teacherHr"]
+["students", "board", "boardWeek"],
+["boardConfig", "payment", "settings"],
+["consult", "member", "teacherNotices"]
 ];
+var AUTO = ["dashboard", "notes", "students", "board", "boardWeek", "boardConfig", "payment", "settings", "consult", "member", "teacherNotices"];
+var GROUP_MAX = 3;
+var IDLE_MS = 2000;
+var IDLE_POLL_MS = 500;
+var navAt = Date.now();
 var DELAY_MS = 1500;
 var GAP_MS = 45000;
 var RESTORE_WAIT_MS = 1500;
@@ -4733,12 +4805,15 @@ var booted = false;
 var bootLeft = {};
 var wants = {};
 var got = {};
+var skippedMenus = {};
 var off = false;
 try { off = window.localStorage.getItem("amuseFreshOff") === "1"; } catch (e) { off = false; }
 function want(changed) {
 if (off) return;
 var all = changed.indexOf("all") !== -1;
 Object.keys(MENUS).forEach(function(name) {
+if (AUTO.indexOf(name) === -1) return;
+if (skippedMenus[name]) return;
 if (!all && !MENUS[name].scopes.some(function(s) { return changed.indexOf(s) !== -1; })) return;
 var key = "menu:" + name;
 if (!MENUS[name].always && typeof amuseFresh.hit(key) === "string") return;
@@ -4751,17 +4826,24 @@ function schedule() {
 clearTimeout(timer);
 timer = setTimeout(run, Math.max(DELAY_MS, lastRunAt + api.gapMs - Date.now()));
 }
+function idle() {
+if (document.hidden || window.__swDetailLoading || window.__swDetailWaiting) return false;
+if (Date.now() - navAt < IDLE_MS) return false;
+try { return typeof window.amuseRpcQuiet !== "function" || !!window.amuseRpcQuiet(IDLE_MS); } catch (e) { return true; }
+}
 function run() {
 timer = null;
 if (busy || document.hidden) return;
 if (Date.now() - lastRunAt < api.gapMs) { schedule(); return; }
+if (!idle()) { timer = setTimeout(run, IDLE_POLL_MS); return; }
 var page = (window.amuseState && amuseState.page) || "";
 var names = Object.keys(queued).filter(function(name) { return MENUS[name].pages.indexOf(page) === -1; });
 names.forEach(function(name) { delete queued[name]; });
-names = names.filter(function(name) { return MENUS[name].always || typeof amuseFresh.hit("menu:" + name) !== "string"; });
+names = names.filter(function(name) { return !skippedMenus[name] && (MENUS[name].always || typeof amuseFresh.hit("menu:" + name) !== "string"); });
 if (!names.length) return;
-send(names.slice(0, 8), null);
-if (names.length > 8) names.slice(8).forEach(function(name) { queued[name] = true; });
+var more = names.length > GROUP_MAX;
+if (more) names.slice(GROUP_MAX).forEach(function(name) { queued[name] = true; });
+send(names.slice(0, GROUP_MAX), more ? function() { lastRunAt = 0; } : null);
 }
 function knownOf(names) {
 var known = {};
@@ -4772,7 +4854,7 @@ if (inf && inf.meta && typeof inf.meta.h === "string" && typeof amuseFresh.get(k
 });
 return known;
 }
-function send(names, done) {
+function send(names, done, light) {
 busy = true;
 inflight = names.slice();
 lastRunAt = Date.now();
@@ -4788,7 +4870,7 @@ names.forEach(function(name) { if (!got[name]) missed(name); });
 if (done) { try { done(ok); } catch (e) {} }
 if (Object.keys(queued).length) schedule();
 };
-google.script.run
+var r = google.script.run
 .withSuccessHandler(function(json) {
 fails = 0;
 try { apply(JSON.parse(json || "{}"), sentAt); } catch (e) { console.error("AMUSE OS prefetch:", e); }
@@ -4797,12 +4879,14 @@ finish(true);
 .withFailureHandler(function() {
 if (++fails >= 2) off = true;
 finish(false);
-})
-.getOsMenusJson(names, knownOf(names));
+});
+if (light) r.getOsMenusJson(names, knownOf(names), { light: true });
+else r.getOsMenusJson(names, knownOf(names));
 }
 function boot(then) {
 if (off || booted) return false;
 booted = true;
+navAt = Date.now();
 BOOT.forEach(function(group) { group.forEach(function(name) { bootLeft[name] = true; }); });
 var after = typeof then === "function" ? then : function() {};
 var step = function(i) {
@@ -4813,8 +4897,8 @@ if (Object.keys(queued).length) schedule();
 after();
 return;
 }
-if (busy) { setTimeout(function() { step(i); }, 500); return; }
-send(BOOT[i], function() { setTimeout(function() { step(i + 1); }, 0); });
+if (busy || !idle()) { setTimeout(function() { step(i); }, IDLE_POLL_MS); return; }
+send(BOOT[i], function() { setTimeout(function() { step(i + 1); }, 0); }, true);
 };
 var started = false;
 var go = function() { if (started) return; started = true; step(0); };
@@ -4834,6 +4918,7 @@ return ["all"].concat(scopes).some(function(s) { return now[s] && svAt[s] && now
 }
 function apply(r, sentAt) {
 if (!r || !r.items || typeof r.items !== "object" || !r.sv) return;
+if (Array.isArray(r.skipped)) r.skipped.forEach(function(name) { if (MENUS[name]) { skippedMenus[name] = true; delete queued[name]; } });
 if (r.oc === 0 || r.oc === 1) window.__amuseLongMemo = r.oc === 1;
 try { amuseFresh.seen(r.sv, null, "menus", sentAt); } catch (e) {}
 var page = (window.amuseState && amuseState.page) || "";
@@ -4988,14 +5073,16 @@ var at = sentAtOf(name);
 return at > 0 && Date.now() - at >= MENU_WAIT_MS;
 };
 var api = {
-want: want, boot: boot, MENUS: MENUS, BOOT: BOOT, gapMs: GAP_MS, data: menuData,
+want: want, boot: boot, MENUS: MENUS, BOOT: BOOT, AUTO: AUTO, gapMs: GAP_MS, idleMs: IDLE_MS, data: menuData,
 queuedNames: function() { return Object.keys(queued); },
+isBusy: function() { return busy; },
 detailsDone: function(ok) {
 if (ok) tell("studentDetails", undefined, { same: true, sv: null });
 else missed("studentDetails");
 },
 pageChanged: function() {
 wants = {};
+navAt = Date.now();
 if (Object.keys(queued).length && !timer && !busy) schedule();
 }
 };
